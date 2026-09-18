@@ -7,11 +7,9 @@ use App\Filament\Widgets\NewInquiryCount;
 use App\Mail\InquiryReceived;
 use App\Models\Inquiry;
 use App\Models\Product;
-use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Filament\Actions\Testing\TestAction;
-use Illuminate\Support\Facades\Mail;
 use Livewire\Livewire;
 
 beforeEach(function () {
@@ -107,42 +105,6 @@ it('blocks an editor from the inquiry inbox', function () {
     $this->get("/admin/inquiries/{$inquiry->id}")->assertForbidden();
 });
 
-it('queues the inquiry notification with the inquiry attached', function () {
-    Mail::fake();
-
-    Setting::set('contact_email', 'sales@mmg.test');
-
-    $inquiry = Inquiry::factory()->create();
-
-    // The public controller that performs this send is Task 14, so this
-    // exercises the exact call it will make rather than a controller that does
-    // not exist yet.
-    $recipient = Setting::get('contact_email');
-
-    if ($recipient) {
-        Mail::to($recipient)->queue(new InquiryReceived($inquiry));
-    }
-
-    Mail::assertQueued(
-        InquiryReceived::class,
-        fn (InquiryReceived $mail): bool => $mail->inquiry->is($inquiry) && $mail->hasTo('sales@mmg.test'),
-    );
-});
-
-it('sends nothing when no contact email is configured', function () {
-    Mail::fake();
-
-    $inquiry = Inquiry::factory()->create();
-
-    $recipient = Setting::get('contact_email');
-
-    if ($recipient) {
-        Mail::to($recipient)->queue(new InquiryReceived($inquiry));
-    }
-
-    Mail::assertNothingQueued();
-});
-
 it('renders the notification for an inquiry with no product', function () {
     $inquiry = Inquiry::factory()->create(['product_id' => null]);
 
@@ -163,6 +125,26 @@ it('counts new inquiries on the dashboard widget', function () {
     Inquiry::factory()->create(['status' => InquiryStatus::Replied]);
 
     expect($stats()[0]->getValue())->toBe(2);
+});
+
+it('shows the inquiry widget on the dashboard for an admin', function () {
+    // `canView()` is what the dashboard's widget filter consults, so the widget
+    // being absent from an editor's page below is a real gate and not a
+    // side-effect of the widget being lazy or failing to render.
+    expect(NewInquiryCount::canView())->toBeTrue();
+
+    $this->get('/admin')->assertSeeLivewire(NewInquiryCount::class);
+});
+
+it('hides the inquiry widget from an editor', function () {
+    $editor = User::factory()->create();
+    $editor->assignRole('editor');
+
+    $this->actingAs($editor);
+
+    expect(NewInquiryCount::canView())->toBeFalse();
+
+    $this->get('/admin')->assertDontSeeLivewire(NewInquiryCount::class);
 });
 
 it('renders the inbox and a record detail page', function () {
