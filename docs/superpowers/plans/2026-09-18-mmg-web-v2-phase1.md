@@ -979,7 +979,6 @@ class ProductFactory extends Factory
             'description' => ['id' => fake()->paragraph(), 'en' => fake()->paragraph()],
             'specs' => ['Ukuran' => '10x15cm'],
             'is_published' => true,
-            'is_featured' => false,
         ];
     }
 }
@@ -1793,6 +1792,28 @@ git commit -m "feat(admin): settings page for company and contact details"
 
 ## Phase 3 — Public Site
 
+> **PAUSED pending wireframes (ruling R1).** The home-page wireframe has been
+> received and is transcribed below; the remaining page wireframes are still
+> outstanding, so Tasks 10–15 must not be dispatched until they arrive. When
+> they do, correct each task's view code against them before dispatch.
+>
+> ### Home page layout (from `wireframe_home.png`)
+>
+> 1. **Header** — 3-column layout: logo (left), menu (centered), CTA button (right).
+> 2. **Hero** — heading, subtext, CTA, background image.
+> 3. **Facilities marquee** — a CSS marquee of healthcare facility types
+>    (Rumah Sakit, Klinik, Puskesmas, Laboratorium, Apotek, …). Static list in
+>    `config/site.php` under `facility_types`; no database table (human answer 1c).
+> 4. **Principal marquee** — a CSS marquee of the brands distributed for. Reuses
+>    the `brands` table, displayed under the label "Principal" (human answer 2a).
+> 5. **Products** — grid 3×2 (six items), sorted by latest created, with a
+>    full-width CTA below linking to the catalog page (human answer 3a).
+> 6. **Contact Us** — 2-column layout: map embed (left), contact details (right)
+>    (human answer 4a).
+> 7. **Footer** — 2 rows. Row 1: 2-column, logo + company address (left) and nav
+>    links (right). Row 2: 1-column, copyright icon + current year + company name,
+>    with year and company name separated by "-".
+
 ### Task 10: Public layout, navigation, and home page
 
 **Files:**
@@ -1817,8 +1838,8 @@ it('renders the home page in both locales', function () {
     $this->get('/en')->assertOk();
 });
 
-it('shows featured products', function () {
-    $product = Product::factory()->create(['is_featured' => true, 'is_published' => true]);
+it('shows the latest products', function () {
+    $product = Product::factory()->create(['is_published' => true]);
 
     $this->get('/')->assertSee($product->getTranslation('name', 'id'));
 });
@@ -1911,10 +1932,14 @@ class HomeController extends Controller
     public function __invoke(): View
     {
         return view('pages.home', [
-            'featured' => Product::published()->where('is_featured', true)
-                ->with(['category', 'brand', 'images'])->take(8)->get(),
+            'products' => Product::published()
+                ->with(['category', 'brand', 'images'])
+                ->orderByDesc('created_at')
+                ->take(6)
+                ->get(),
             'categories' => Category::published()->orderBy('sort_order')->take(6)->get(),
-            'brands' => Brand::published()->orderBy('sort_order')->take(12)->get(),
+            'principals' => Brand::published()->orderBy('sort_order')->take(12)->get(),
+            'facilities' => config('site.facility_types'),
         ]);
     }
 }
@@ -2721,7 +2746,23 @@ public function seoDescription(): string
 }
 ```
 
-`Brand` uses `$this->name` for both when meta is absent.
+`Brand` differs: it has no `short_description` column, so it must override the
+description accessor rather than inherit the body above.
+
+```php
+public function seoTitle(): string
+{
+    return $this->meta_title ?: $this->name;
+}
+
+public function seoDescription(): string
+{
+    return $this->meta_description ?: $this->name;
+}
+```
+
+`Brand::$translatable` also needs `meta_title` and `meta_description` added
+alongside its existing `description` key.
 
 - [ ] **Step 5: Write the meta component and wire it into the layout**
 
