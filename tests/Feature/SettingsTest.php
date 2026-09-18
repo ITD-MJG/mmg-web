@@ -84,6 +84,13 @@ it('saves settings and pre-fills them on the next mount', function () {
             'whatsapp' => '+62 812-3456-7890',
             'socials' => ['linkedin' => 'https://linkedin.com/company/mmg'],
         ]);
+
+    // And through a real HTTP request, so the pre-fill is proven on the page
+    // the browser actually loads rather than only inside the Livewire harness.
+    $this->get('/admin/settings')
+        ->assertOk()
+        ->assertSee('PT Medquest Mitra Global')
+        ->assertSee('sales@mmg.co.id');
 });
 
 it('leaves settings the form does not expose untouched', function () {
