@@ -538,11 +538,10 @@ return new class extends Migration
             $table->json('specs')->nullable();
             $table->json('certifications')->nullable();
             $table->boolean('is_published')->default(false);
-            $table->boolean('is_featured')->default(false);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
 
-            $table->index(['is_published', 'is_featured']);
+            $table->index(['is_published', 'sort_order']);
             $table->index(['category_id', 'is_published']);
             $table->index(['brand_id', 'is_published']);
         });
@@ -678,7 +677,7 @@ class Product extends Model
         'category_id', 'brand_id', 'slug', 'sku',
         'name', 'short_description', 'description',
         'specs', 'certifications',
-        'is_published', 'is_featured', 'sort_order',
+        'is_published', 'sort_order',
     ];
 
     protected function casts(): array
@@ -687,7 +686,6 @@ class Product extends Model
             'specs' => 'array',
             'certifications' => 'array',
             'is_published' => 'boolean',
-            'is_featured' => 'boolean',
         ];
     }
 
@@ -1419,7 +1417,6 @@ public static function form(Schema $schema): Schema
             ->columnSpanFull(),
 
         Toggle::make('is_published')->label('Terbitkan'),
-        Toggle::make('is_featured')->label('Unggulan'),
         TextInput::make('sort_order')->numeric()->default(0),
     ]);
 }
@@ -1427,7 +1424,7 @@ public static function form(Schema $schema): Schema
 
 - [ ] **Step 5: Configure the table**
 
-In the same file, `table()` should list `name`, `category.name`, `brand.name`, `is_published`, `is_featured`, with a `SelectFilter` for category and brand and a `TernaryFilter` for published state. All searches operate on `name->id` via `->searchable(['name->id', 'name->en'])`.
+In the same file, `table()` should list `name`, `category.name`, `brand.name`, `is_published`, with a `SelectFilter` for category and brand and a `TernaryFilter` for published state. All searches operate on `name->id` via `->searchable(['name->id', 'name->en'])`.
 
 - [ ] **Step 6: Configure the images relation manager**
 
