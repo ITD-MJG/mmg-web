@@ -85,6 +85,28 @@ it('is a read-only resource with no create route', function () {
     $this->get('/admin/inquiries/create')->assertNotFound();
 });
 
+it('lets an admin reach the inquiry inbox', function () {
+    Inquiry::factory()->create();
+
+    $this->actingAs($this->admin)->get('/admin/inquiries')->assertOk();
+});
+
+it('blocks an editor from the inquiry inbox', function () {
+    $inquiry = Inquiry::factory()->create();
+
+    $editor = User::factory()->create();
+    $editor->assignRole('editor');
+
+    $this->actingAs($editor);
+
+    // The gate is role-based, not route-based: an editor is denied at the
+    // resource as well as at both URLs.
+    expect(InquiryResource::canViewAny())->toBeFalse();
+
+    $this->get('/admin/inquiries')->assertForbidden();
+    $this->get("/admin/inquiries/{$inquiry->id}")->assertForbidden();
+});
+
 it('queues the inquiry notification with the inquiry attached', function () {
     Mail::fake();
 

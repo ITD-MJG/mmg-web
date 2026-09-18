@@ -8,6 +8,7 @@ use App\Filament\Resources\Inquiries\Schemas\InquiryInfolist;
 use App\Filament\Resources\Inquiries\Tables\InquiriesTable;
 use App\Models\Inquiry;
 use BackedEnum;
+use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
@@ -54,5 +55,21 @@ class InquiryResource extends Resource
     public static function canCreate(): bool
     {
         return false;
+    }
+
+    public static function canAccess(): bool
+    {
+        return static::canViewAny();
+    }
+
+    /**
+     * Security: the `editor` role is scoped to content. An inquiry is not
+     * content — it carries customer PII (name, company, email, phone, message),
+     * so it is admin-only. Enforced here rather than by hiding the navigation
+     * item, because a hidden link is not access control.
+     */
+    public static function canViewAny(): bool
+    {
+        return Filament::auth()->user()?->hasRole('admin') ?? false;
     }
 }
