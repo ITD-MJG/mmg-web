@@ -103,6 +103,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | First Admin
+    |--------------------------------------------------------------------------
+    |
+    | Credentials for the account created by `FirstAdminSeeder` on a fresh
+    | deployment. Both must be set, otherwise the seeder skips and logs a
+    | warning — the password is never hardcoded in the seeder.
+    |
+    */
+
+    'admin_email' => env('ADMIN_EMAIL'),
+
+    'admin_password' => env('ADMIN_PASSWORD'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |
