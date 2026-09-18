@@ -78,11 +78,28 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'id'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'id'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    /*
+    |--------------------------------------------------------------------------
+    | Supported Locales
+    |--------------------------------------------------------------------------
+    |
+    | Maps each locale to its URL prefix. The default locale has an empty
+    | prefix so Indonesian URLs stay unprefixed. Adding a locale here is not
+    | enough on its own: hreflang correctness depends on every route existing
+    | under every key, which the integrity test in tests/Feature asserts.
+    |
+    */
+
+    'locales' => [
+        'id' => '',
+        'en' => 'en',
+    ],
+
+    'faker_locale' => env('APP_FAKER_LOCALE', 'id_ID'),
 
     /*
     |--------------------------------------------------------------------------
