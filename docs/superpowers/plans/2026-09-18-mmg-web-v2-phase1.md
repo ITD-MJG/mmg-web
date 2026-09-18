@@ -3576,7 +3576,7 @@ git commit -m "feat(aeo): markdown content negotiation with Vary: Accept"
 ### Task 21: Cache invalidation observers
 
 **Files:**
-- Create: `app/Observers/{ProductObserver,CategoryObserver,BrandObserver,PageObserver}.php`, `tests/Feature/CacheInvalidationTest.php`
+- Create: `app/Observers/{ProductObserver,CategoryObserver,BrandObserver,PageObserver,SettingObserver}.php`, `tests/Feature/CacheInvalidationTest.php`
 - Modify: `app/Providers/AppServiceProvider.php`
 
 **Interfaces:**
@@ -3620,7 +3620,17 @@ it('refreshes the catalog document with the new product on next read', function 
 Run: `./vendor/bin/pest tests/Feature/CacheInvalidationTest.php`
 Expected: FAIL — the cache is never cleared on save.
 
-- [ ] **Step 3: Write one observer and register all four**
+- [ ] **Step 3: Write the observers and register all five**
+
+**Five, not four.** Task 9's implementer flagged that `Setting` was missing from
+this list, and it is a real gap: `ManageSettings` writes company name, contact
+email, phone, WhatsApp, address, and default meta through `Setting::set()`, and
+the public layout, the RFQ recipient, and the agent documents all read those
+values. Without a `SettingObserver`, editing the company phone number would leave
+the agent documents and cached pages serving the old value until the 6-hour TTL
+expired — and Task 17's sitemap plus Task 19's `katalog.md` both embed company
+data. The `Setting` model has no cache layer of its own, so the observer is the
+only invalidation point.
 
 `app/Observers/ProductObserver.php`:
 
@@ -3655,7 +3665,14 @@ Product::observe(ProductObserver::class);
 Category::observe(CategoryObserver::class);
 Brand::observe(BrandObserver::class);
 Page::observe(PageObserver::class);
+Setting::observe(SettingObserver::class);
 ```
+
+`app/Observers/SettingObserver.php` follows the same shape as the others, but
+takes `Setting` and keys on the `saved`/`deleted` events. Note that `Setting`'s
+primary key is the string `key`, so the observer receives a model whose
+`getKey()` is the setting name — useful for logging, not needed for the
+invalidation itself.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
