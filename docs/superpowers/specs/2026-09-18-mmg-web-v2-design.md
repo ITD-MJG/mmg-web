@@ -95,9 +95,44 @@ Two locales, ID (default, no URL prefix) and EN (`/en` prefix).
 /en/products/{slug}     (en)
 ```
 
-- **One slug per record**, shared across locales (Latin, ID-derived). Two slugs would
-  double admin fields and create duplicate-content problems for no SEO gain.
-- `hreflang` tags (`id`, `en`, `x-default`) handle locale targeting.
+**One slug per record, shared across locales** (Latin, ID-derived).
+
+Rationale — corrected after research; the earlier draft of this spec justified the
+decision with a claim that was false, and the reasoning is recorded here so it is not
+re-litigated:
+
+- **Keywords in URLs are a negligible ranking factor.** Google's John Mueller has stated
+  repeatedly that URL keywords are "a very very lightweight factor", "minimal once the
+  content is indexed", and "overrated", adding that it is not worth restructuring a site
+  to place keywords in URLs. The SEO delta between shared and translated slugs is
+  effectively zero.
+- **Translated slugs do not create duplicate content.** Google treats localized versions
+  as duplicates only when the main content remains untranslated. `hreflang` exists
+  specifically to declare intentional language variants. There is no duplicate-content
+  penalty for either slug strategy.
+- **`hreflang` is a routing directive, not a ranking signal.** It selects which locale
+  version is served to which user; it does not raise rankings.
+- **The decisive factor is the slug-parity trap.** If `hreflang` generation assumes slug
+  parity across locales and a slug drifts — typo, orphaned record, or a deliberately
+  translated slug — the page emits a `hreflang` pointing at a 404. Google then discards
+  **the entire annotation pair**, both sides, silently. There is no build failure and
+  Search Console hreflang reporting lags 2–4 weeks behind the break. A single shared slug
+  makes parity structural and therefore makes this failure mode impossible.
+- **The remaining cost is CTR/UX only**, and for this catalog it is near zero: product
+  names are brand + model identifiers (`OneMed Enema Set`, `Mindray uMEC12`) which do not
+  translate. A translated slug would be identical to the ID slug in most cases, adding a
+  field to maintain for no benefit.
+
+**Upgrade path if translated EN slugs are later wanted:** add a nullable `slug_en` column,
+resolve either slug at the route level, make the canonical locale-specific, and switch
+`hreflang` from assumed parity to explicit cross-locale references. Additive migration,
+no rewrite of surrounding schema — the same pattern used for `specs`.
+
+**hreflang implementation requirements (apply regardless of slug strategy):** every page
+must be self-referencing, annotations must be bidirectional, and URLs must be
+fully-qualified absolute URLs. Partial or non-reciprocal sets cause Google to ignore the
+annotations entirely.
+
 - Implemented with a thin custom middleware (~40 lines): resolve locale, set app locale,
   share with views, emit `hreflang`. **No localization package** — two locales do not
   justify the dependency.
@@ -291,7 +326,7 @@ ID paths have no prefix; EN paths are prefixed with `/en`.
 | Meta | per-page editable title/description in admin; sensible fallbacks |
 | Open Graph | OG/Twitter cards; fallback image per category |
 | JSON-LD | see §9 Layer 4 |
-| Slugs | shared across locales |
+| Slugs | shared across locales (§4.1) — parity is structural, not assumed |
 | Performance | guest HTML cache, pre-built assets, HTTP/3, Brotli |
 
 ---
@@ -423,6 +458,10 @@ the implementation plan does not silently omit it.
 
 - **Pest feature tests** per route, per locale variant: renders, locale switching,
   `hreflang` correctness, 404 on unpublished records.
+- **hreflang integrity test**: for every published record, assert the emitted `hreflang`
+  URLs return 200, are self-referencing, bidirectional, and fully-qualified. This is the
+  automated guard against the slug-parity trap — the failure is otherwise silent and only
+  surfaces in Search Console weeks later.
 - **RFQ form**: validation, honeypot, rate limiting, email dispatch, `inquiries` row
   created with correct `locale` and `product_id`.
 - **Catalog**: filtering by category/brand, FULLTEXT search, pagination, cover-image
