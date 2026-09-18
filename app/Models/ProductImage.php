@@ -29,18 +29,24 @@ class ProductImage extends Model
             }
 
             // Demote any existing cover for this product first, otherwise the
-            // uniq_cover_per_product index rejects the write. The generated
-            // column is the real guarantee; this keeps the common path from
-            // surfacing a constraint violation to the editor.
+            // uniq_cover_per_product index rejects the write. Last cover set
+            // wins: the generated column stays the guarantee for writes that
+            // bypass the model, but it must never surface to an editor, who
+            // toggles this through a plain switch in the admin.
             //
-            // whereKeyNot() is a no-op when the key is null (a create), which
-            // is correct: there is no row to exclude, so every sibling cover
-            // is demoted.
-            static::query()
+            // The self-exclusion is conditional because whereKeyNot(null)
+            // compiles to `id is not null`, which matches every row — on a
+            // create that would be harmless today but would silently demote
+            // for the wrong reason and break the moment the intent changes.
+            $query = static::query()
                 ->where('product_id', $image->product_id)
-                ->whereKeyNot($image->getKey())
-                ->where('is_cover', true)
-                ->update(['is_cover' => false]);
+                ->where('is_cover', true);
+
+            if ($image->exists) {
+                $query->whereKeyNot($image->getKey());
+            }
+
+            $query->update(['is_cover' => false]);
         });
     }
 
