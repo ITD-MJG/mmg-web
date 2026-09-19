@@ -6,4 +6,35 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --animate-marquee: marquee 30s linear infinite;
+}
+
+@keyframes marquee {
+    from {
+        transform: translateX(0);
+    }
+
+    to {
+        /* The track holds two identical copies of the list, so shifting by
+           half its own width lands copy two exactly where copy one began —
+           the loop is seamless with no gap and no jump. */
+        transform: translateX(-50%);
+    }
+}
+
+/*
+ * Marquee track. `overflow: hidden` lives on the wrapper (`.marquee`), not the
+ * moving element, so the animation can never widen the page. Pausing on hover
+ * and honouring `prefers-reduced-motion` are both required: an infinite
+ * animation that ignores reduced-motion is an accessibility defect.
+ */
+.marquee:hover > * {
+    animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .marquee > * {
+        animation: none;
+    }
 }
