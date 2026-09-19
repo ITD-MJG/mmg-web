@@ -1814,12 +1814,26 @@ git commit -m "feat(admin): settings page for company and contact details"
 ### Task 10: Public layout, navigation, and home page
 
 **Files:**
-- Create: `resources/views/layouts/app.blade.php`, `resources/views/partials/{nav,footer}.blade.php`, `app/Http/Controllers/HomeController.php`, `resources/views/pages/home.blade.php` (replace), `tests/Feature/HomePageTest.php`
+- Create: `config/site.php`, `resources/views/layouts/app.blade.php`, `resources/views/partials/{nav,footer}.blade.php`, `resources/views/partials/product-card.blade.php`, `app/Http/Controllers/HomeController.php`, `resources/views/pages/{home,placeholder}.blade.php`, `tests/Feature/HomePageTest.php`
 - Modify: `routes/web.php`, `resources/css/app.css`
 
 **Interfaces:**
-- Consumes: `LocaleUrls`, `Setting`, `Product::published()`
-- Produces: `layouts/app.blade.php` with slots `@yield('title')`, `@yield('meta')`, `@yield('schema')`, `@yield('content')`
+- Consumes: `LocaleUrls`, `Setting`, `Product::published()`, `Brand::published()`
+- Produces: `layouts/app.blade.php` with slots `@yield('title')`, `@yield('meta')`, `@yield('schema')`, `@yield('content')`; `config/site.php`; `partials/product-card.blade.php` (**Task 11 reuses this — it must not create a second card partial**); **placeholder routes** for the five public pages later tasks own (see Step 7b).
+
+> **Wireframe is authoritative for this task (ruling R1).** `wireframe_home.png`
+> specifies exactly seven sections, in this order:
+>
+> 1. **Header** — 3-column: logo (left), menu (centered), CTA button (right).
+> 2. **Hero** — heading, subtext, CTA, background image.
+> 3. **Facilities marquee** — CSS marquee of facility types, static list.
+> 4. **Principal marquee** — CSS marquee of brands, labelled "Principal".
+> 5. **Products** — grid 3×2 (six items), latest created, full-width CTA below.
+> 6. **Contact Us** — 2-column: map embed (left), contact details (right).
+> 7. **Footer** — 2 rows (see Step 5b).
+>
+> **There is no category grid on the home page.** The plan text below previously
+> rendered one; the wireframe does not show one, and a test asserts its absence.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1828,7 +1842,10 @@ git commit -m "feat(admin): settings page for company and contact details"
 ```php
 <?php
 
+use App\Models\Brand;
+use App\Models\Category;
 use App\Models\Product;
+use App\Models\Setting;
 
 it('renders the home page in both locales', function () {
     $this->get('/')->assertOk();
@@ -1849,12 +1866,56 @@ it('never renders a price', function () {
     $response->assertDontSee('Rp', false);
     $response->assertDontSee('IDR');
 });
+
+it('shows at most six products, newest first', function () {
+    $old = Product::factory()->create(['is_published' => true, 'name' => ['id' => 'Tertua']]);
+    Product::factory()->count(6)->create(['is_published' => true]);
+
+    $response = $this->get('/');
+
+    $response->assertDontSee('Tertua');
+});
+
+it('renders the facilities marquee from config', function () {
+    $first = config('site.facility_types')[0];
+
+    $this->get('/')->assertSee($first);
+});
+
+it('renders the principal marquee from published brands only', function () {
+    Brand::factory()->create(['is_published' => true, 'name' => 'Principal Tampil']);
+    Brand::factory()->create(['is_published' => false, 'name' => 'Principal Tersembunyi']);
+
+    $response = $this->get('/');
+
+    $response->assertSee('Principal Tampil');
+    $response->assertDontSee('Principal Tersembunyi');
+});
+
+it('shows the contact details from settings', function () {
+    Setting::set('address', 'Jl. Contoh No. 1, Jakarta');
+
+    $this->get('/')->assertSee('Jl. Contoh No. 1, Jakarta');
+});
+
+it('renders the footer copyright with the current year and company name', function () {
+    Setting::set('company_name', 'Medquest Mitra Global');
+
+    $this->get('/')->assertSee(now()->year . ' - Medquest Mitra Global');
+});
+
+it('does not render a category grid on the home page', function () {
+    Category::factory()->create(['is_published' => true, 'name' => ['id' => 'Kategori Tampil']]);
+
+    $this->get('/')->assertDontSee('Kategori Tampil');
+});
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `./vendor/bin/pest tests/Feature/HomePageTest.php`
-Expected: FAIL — the placeholder view has no featured products and the layout does not exist.
+Expected: FAIL — the placeholder view is a bare `<h1>`, so no products, no
+marquees, no contact details, and no footer render.
 
 - [ ] **Step 3: Write the layout**
 
@@ -1900,7 +1961,11 @@ Expected: FAIL — the placeholder view has no featured products and the layout 
 
 - [ ] **Step 5: Write the nav with a locale switcher**
 
-`resources/views/partials/nav.blade.php` — links to catalog, brands, about, contact using `route("{$locale}.products.index")` etc., plus:
+`resources/views/partials/nav.blade.php` — a 3-column header per the wireframe:
+logo left, menu centered, CTA button right. The menu links to catalog, brands,
+about, contact using `route("{$locale}.products.index")` etc.; the CTA button
+links to `route("{$locale}.contact")`. Below `md`, collapse the menu behind a
+toggle rather than wrapping it. Include the locale switcher:
 
 ```blade
 <a href="{{ \App\Support\LocaleUrls::switchTo(request(), $locale === 'id' ? 'en' : 'id') }}"
@@ -1908,6 +1973,20 @@ Expected: FAIL — the placeholder view has no featured products and the layout 
    hreflang="{{ $locale === 'id' ? 'en' : 'id' }}">
     {{ $locale === 'id' ? 'EN' : 'ID' }}
 </a>
+```
+
+### Step 5b: Write the footer
+
+`resources/views/partials/footer.blade.php` — 2 rows, per the wireframe:
+
+- **Row 1**, 2-column: logo and company address on the left (both from `Setting`),
+nav links on the right.
+- **Row 2**, 1-column: a copyright icon followed by the current year and the
+company name, with year and name separated by `" - "`. This exact format is
+asserted by a test, so build the string in one place:
+
+```blade
+&copy; {{ now()->year }} - {{ Setting::get('company_name', 'Medquest Mitra Global') }}
 ```
 
 - [ ] **Step 6: Write the controller and home view**
@@ -1920,7 +1999,6 @@ Expected: FAIL — the placeholder view has no featured products and the layout 
 namespace App\Http\Controllers;
 
 use App\Models\Brand;
-use App\Models\Category;
 use App\Models\Product;
 use Illuminate\View\View;
 
@@ -1934,7 +2012,6 @@ class HomeController extends Controller
                 ->orderByDesc('created_at')
                 ->take(6)
                 ->get(),
-            'categories' => Category::published()->orderBy('sort_order')->take(6)->get(),
             'principals' => Brand::published()->orderBy('sort_order')->take(12)->get(),
             'facilities' => config('site.facility_types'),
         ]);
@@ -1942,7 +2019,75 @@ class HomeController extends Controller
 }
 ```
 
-`resources/views/pages/home.blade.php` extends the layout, renders a hero, the category grid, the featured product grid, the brand strip, and an RFQ CTA. Each product card includes a 40–60 word excerpt from `short_description` and links to `route("{$locale}.products.show", $product)`.
+Note the absence of `categories` — see the wireframe note above. `Setting` is
+read directly in the view (address, phone, WhatsApp, socials) rather than passed
+through the controller, matching how the layout reads `default_meta_title`.
+
+`resources/views/pages/home.blade.php` extends the layout and renders the seven
+wireframe sections **in wireframe order**: hero; facilities marquee; principal
+marquee (label "Principal"); product grid 3×2 with a full-width CTA below
+linking to `route("{$locale}.products.index")`; Contact Us; (the footer is in
+the layout, not this view). Each product card links to
+`route("{$locale}.products.show", $product)`.
+
+### Step 6b: Write the shared product card
+
+The home grid and the catalog grid render the same card, so create it once:
+
+`resources/views/partials/product-card.blade.php` — takes `$product`, renders
+the cover image (falling back gracefully when `images` is empty — use the first
+`is_cover` image, or the first image, or a neutral placeholder), the product
+name, and a 40–60 word excerpt from `short_description`. It must never render a
+price: the company is a distributor and does not publish pricing, and a test
+asserts the home page contains neither `Rp` nor `IDR`.
+
+**Task 11 must reuse this partial rather than creating its own.** Task 11's
+Files line previously listed `partials/product-card.blade.php` under Create;
+that file now originates here, because the home page ships first and needs it.
+Task 11 should treat it as existing and, if it needs catalog-specific markup,
+extend the partial with an optional slot rather than forking it.
+
+Contact Us is a 2-column section: map embed on the left, contact details on the
+right, both read from `Setting`. The map is a plain `<iframe>` pointing at a
+Google Maps embed URL built from the `address` setting — no API key, no JS SDK.
+Guard it with `@if (filled(Setting::get('address')))` so an unconfigured install
+renders the details column alone rather than a broken embed.
+
+The facilities list must come from `config('site.facility_types')`, so create
+`config/site.php`:
+
+```php
+<?php
+
+return [
+    /*
+    |--------------------------------------------------------------------------
+    | Facility types
+    |--------------------------------------------------------------------------
+    |
+    | The healthcare facility types shown in the home-page marquee. Static by
+    | design (human answer 1c): these are marketing copy, not catalogue data,
+    | and do not belong in the database.
+    |
+    */
+
+    'facility_types' => [
+        'Rumah Sakit',
+        'Klinik',
+        'Puskesmas',
+        'Laboratorium',
+        'Apotek',
+        'Rumah Sakit Gigi dan Mulut',
+        'Balai Kesehatan',
+        'Klinik Pratama',
+    ],
+];
+```
+
+Add the marquee animation to `resources/css/app.css` as a Tailwind v4 `@utility`
+(a plain `@keyframes` plus a utility class is fine) — the marquee must pause on
+hover and respect `prefers-reduced-motion`, and must not cause horizontal page
+scroll.
 
 - [ ] **Step 7: Point the route at the controller**
 
@@ -1950,6 +2095,55 @@ In `routes/web.php`, replace the `Route::view` line with:
 
 ```php
 Route::get('/', \App\Http\Controllers\HomeController::class)->name('home');
+```
+
+### Step 7b: Register placeholder routes for the pages later tasks own
+
+The nav and the home-page CTA link to `products.index`, `brands.index`, `about`,
+and `contact`, and each product card links to `products.show`. **None of those
+routes exist yet** — Tasks 11, 12, 13, 14, and 15 create them. Calling `route()`
+on a missing name throws `RouteNotFoundException`, so the home page cannot
+render until they are registered.
+
+Register all six now as minimal `Route::view` placeholders inside the same
+locale loop, so `route()` resolves and the nav is a real link rather than a
+dead one:
+
+```php
+// Inside the existing locale loop, so the prefix is already applied.
+Route::view($locale === 'en' ? '/products' : '/produk', 'pages.placeholder')
+    ->name('products.index');
+Route::view($locale === 'en' ? '/products/{slug}' : '/produk/{slug}', 'pages.placeholder')
+    ->name('products.show');
+Route::view($locale === 'en' ? '/brands' : '/brand', 'pages.placeholder')
+    ->name('brands.index');
+Route::view($locale === 'en' ? '/brands/{slug}' : '/brand/{slug}', 'pages.placeholder')
+    ->name('brands.show');
+Route::view($locale === 'en' ? '/about' : '/tentang-kami', 'pages.placeholder')
+    ->name('about');
+Route::view($locale === 'en' ? '/contact' : '/kontak', 'pages.placeholder')
+    ->name('contact');
+```
+
+These use the exact same locale-conditional paths as the real routes in Tasks
+11–15, so the URLs do not change when the real controllers land — only the
+handler and the view do. Create
+`resources/views/pages/placeholder.blade.php` as a minimal view extending the
+layout.
+
+**Watch the `{slug}` placeholders.** `products.show` and `brands.show` are
+registered here with a `{slug}` parameter and no model binding. The real routes
+in Tasks 12 and 13 bind the parameter, and their tests cover that; this
+task only needs the names to resolve. Do not add controller logic here.
+
+**Each later task replaces its own placeholder line** — every one of Tasks 11–15
+already lists `routes/web.php` under Modify, so this is a one-line swap inside
+work they were already doing. Add a short comment above the
+block recording that intent, so the placeholders are not mistaken for final code:
+
+```php
+// Placeholder routes for pages built in later tasks. Each is replaced by its
+// real controller when that task lands — see Tasks 11, 12, 13, 14, 15.
 ```
 
 - [ ] **Step 8: Run the tests to verify they pass**
@@ -1969,7 +2163,8 @@ git commit -m "feat(public): layout, navigation, locale switcher, and home page"
 ### Task 11: Catalog index with filters and search
 
 **Files:**
-- Create: `app/Http/Controllers/CatalogController.php`, `resources/views/pages/catalog.blade.php`, `resources/views/partials/product-card.blade.php`, `database/migrations/*_add_product_fulltext_index.php`, `tests/Feature/CatalogTest.php`
+- Create: `app/Http/Controllers/CatalogController.php`, `resources/views/pages/catalog.blade.php`, `database/migrations/*_add_product_fulltext_index.php`, `tests/Feature/CatalogTest.php`
+- Reuses: `resources/views/partials/product-card.blade.php` — **created in Task 10, do not create a second one**
 - Modify: `routes/web.php`
 
 **Interfaces:**
@@ -2129,7 +2324,7 @@ class CatalogController extends Controller
 
 - [ ] **Step 6: Write the view**
 
-`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain `<form method="get">` with `<select name="category">`, `<select name="brand">`, and `<input name="q">` — no JavaScript required, so the page works with JS disabled and stays cacheable. Product cards come from `partials/product-card.blade.php`.
+`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain `<form method="get">` with `<select name="category">`, `<select name="brand">`, and `<input name="q">` — no JavaScript required, so the page works with JS disabled and stays cacheable. Product cards come from `partials/product-card.blade.php`, which Task 10 already created — reuse it, do not fork it.
 
 - [ ] **Step 7: Register the route**
 
