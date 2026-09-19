@@ -59,7 +59,7 @@ it('shows the contact details from settings', function () {
 it('renders the footer copyright with the current year and company name', function () {
     Setting::set('company_name', 'Medquest Mitra Global');
 
-    $this->get('/')->assertSee(now()->year . ' - Medquest Mitra Global');
+    $this->get('/')->assertSee(now()->year.' - Medquest Mitra Global');
 });
 
 it('does not render a category grid on the home page', function () {

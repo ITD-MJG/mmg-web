@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -20,7 +21,7 @@ foreach (config('app.locales') as $locale => $prefix) {
         ->middleware("locale:{$locale}")
         ->name("{$locale}.")
         ->group(function () use ($locale) {
-            Route::get('/', \App\Http\Controllers\HomeController::class)->name('home');
+            Route::get('/', HomeController::class)->name('home');
 
             // Placeholder routes for pages built in later tasks. Each is replaced
             // by its real controller when that task lands — see Tasks 11, 12, 13,
