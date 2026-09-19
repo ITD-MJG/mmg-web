@@ -20,6 +20,13 @@ pain is incurred.
 **Out of scope:** e-commerce/cart/checkout, gated account pricing, stock levels,
 payment processing, ERP integration.
 
+**Terminology — "principal".** The company's own term for the manufacturers and
+distributors whose products it distributes is **principal**. The codebase uses
+that word throughout — model, table, column, routes, admin resource — rather
+than "brand", so that the domain language, the UI, and the database agree. It is
+a loanword used in both Indonesian and English business contexts, so it is the
+same string in both locales and is not translated.
+
 ---
 
 ## 2. Requirements (from discovery)
@@ -35,7 +42,7 @@ payment processing, ERP integration.
 | 7 | Stack direction | Custom codebase, not WordPress |
 | 8 | SEO | Required |
 | 9 | AEO/GEO | Required — discoverability by AI systems and buying agents |
-| 10 | Search/filter | Category + brand filter; MySQL FULLTEXT search |
+| 10 | Search/filter | Category + principal filter; MySQL FULLTEXT search |
 
 ### Confirmed hosting capability (Domaineisa Nimbus)
 
@@ -119,7 +126,7 @@ re-litigated:
   Search Console hreflang reporting lags 2–4 weeks behind the break. A single shared slug
   makes parity structural and therefore makes this failure mode impossible.
 - **The remaining cost is CTR/UX only**, and for this catalog it is near zero: product
-  names are brand + model identifiers (`OneMed Enema Set`, `Mindray uMEC12`) which do not
+  names are principal + model identifiers (`OneMed Enema Set`, `Mindray uMEC12`) which do not
   translate. A translated slug would be identical to the ID slug in most cases, adding a
   field to maintain for no benefit.
 
@@ -162,7 +169,7 @@ public page guest-cacheable, which is what allows the site to survive Entry Proc
 
 - LiteSpeed Cache for guest HTML; purge on model save via Eloquent observers.
 - Fallback if LiteSpeed cache control is not exposed: `spatie/laravel-responsecache`.
-- Application-level: `Cache::remember` for categories, brands, settings, navigation,
+- Application-level: `Cache::remember` for categories, principals, settings, navigation,
   and the markdown/agent endpoints.
 
 ---
@@ -175,10 +182,10 @@ public page guest-cacheable, which is what allows the site to survive Entry Proc
 categories      id, parent_id?, slug, name(json), description(json),
                 image, sort_order, is_published, timestamps
 
-brands          id, slug, name, logo, description(json),
+principals          id, slug, name, logo, description(json),
                 certifications(json)?, sort_order, is_published, timestamps
 
-products        id, category_id, brand_id?, slug, sku?,
+products        id, category_id, principal_id?, slug, sku?,
                 name(json), short_description(json), description(json),
                 specs(json),
                 certifications(json)?,
@@ -223,7 +230,7 @@ Keys are translatable-capable but stored as plain strings for phase 1 (spec keys
 the JSON value for a key becomes `{"id": "...", "en": "..."}` and the renderer handles
 both shapes).
 
-**`certifications` nullable on `products` and `brands`.** Distribution licence, AKL, and
+**`certifications` nullable on `products` and `principals`.** Distribution licence, AKL, and
 izin edar numbers are not yet available — the company must confirm what may be published.
 The field is designed now so enabling it later is a data-entry task, not a migration.
 
@@ -282,11 +289,11 @@ ID paths have no prefix; EN paths are prefixed with `/en`.
 
 | ID | EN | Notes |
 |---|---|---|
-| `/` | `/en` | hero, value props, featured categories + products, brand strip, RFQ CTA |
-| `/produk` | `/en/products` | filter by category + brand, search, paginated |
+| `/` | `/en` | hero, facilities marquee, principal marquee, products grid 3×2, contact, footer |
+| `/produk` | `/en/products` | filter by category + principal, search, paginated |
 | `/produk/{slug}` | `/en/products/{slug}` | gallery, specs table, description, RFQ CTA, related products |
-| `/brand` | `/en/brands` | brand index |
-| `/brand/{slug}` | `/en/brands/{slug}` | brand profile + its products |
+| `/principal` | `/en/principals` | principal index |
+| `/principal/{slug}` | `/en/principals/{slug}` | principal profile + its products |
 | `/tentang-kami` | `/en/about` | company profile |
 | `/kontak` | `/en/contact` | contact details + RFQ form |
 | `/halaman/{slug}` | `/en/pages/{slug}` | privacy, terms, and other static pages |
@@ -303,7 +310,7 @@ ID paths have no prefix; EN paths are prefixed with `/en`.
   relation manager with `is_cover` toggle and drag-sort; publish toggle; SEO tab;
   optional certifications section.
 - **Categories** — same translatable pattern; tree structure.
-- **Brands** — translatable, logo, optional certifications.
+- **Principals** — translatable, logo, optional certifications.
 - **Pages** — translatable title/body.
 - **Inquiries** — inbox with status actions (`new → read → replied`), product context
   when submitted from a product page, email notification on submit.
@@ -381,7 +388,7 @@ that would ship empty.
 |---|---|---|
 | `/llms.txt` | company overview, distribution scope, licences, links to `/katalog.md`, `/tentang.md`, `/kontak.md` | directory for AI systems (llmstxt.org) |
 | `/llms-full.txt` | full catalog + company profile in one markdown document | single-fetch agent context |
-| `/katalog.md` | every product: name, brand, category, specs, certifications (when available), and a quote-request path with link to the RFQ form | primary agent-facing artifact |
+| `/katalog.md` | every product: name, principal, category, specs, certifications (when available), and a quote-request path with link to the RFQ form | primary agent-facing artifact |
 | Content negotiation | `Accept: text/markdown` on catalog/product routes returns a markdown representation | matches Cloudflare/Stripe/Anthropic/Mintlify practice |
 
 Content negotiation requires an explicit `Vary: Accept` response header on negotiated
@@ -410,12 +417,12 @@ next action.
 | Blog (phase 2) | `Article`, named `author`, `datePublished`, `dateModified` |
 | All | `BreadcrumbList` |
 
-`@id` values are consistent across every product page so that brand → manufacturer
+`@id` values are consistent across every product page so that principal → manufacturer
 relationships feed Knowledge Graph entity matching instead of being re-declared ad hoc.
 
 ### Layer 5 — Third-party presence (operational, greenfield)
 
-Brands are substantially more likely to be cited via third-party sources than via their
+Principals are substantially more likely to be cited via third-party sources than via their
 own domain. Self-hosted content is necessary but not sufficient.
 
 Starting-point checklist (no existing presence; nothing to migrate):
@@ -464,7 +471,7 @@ the implementation plan does not silently omit it.
   surfaces in Search Console weeks later.
 - **RFQ form**: validation, honeypot, rate limiting, email dispatch, `inquiries` row
   created with correct `locale` and `product_id`.
-- **Catalog**: filtering by category/brand, FULLTEXT search, pagination, cover-image
+- **Catalog**: filtering by category/principal, FULLTEXT search, pagination, cover-image
   fallback when a product has no images.
 - **DB constraint test**: attempting to set two covers on one product fails.
 - **Agent endpoints**: `/llms.txt`, `/llms-full.txt`, `/katalog.md` return valid content
@@ -505,7 +512,7 @@ the implementation plan does not silently omit it.
 
 | # | Item | Owner | Blocks |
 |---|---|---|---|
-| 1 | Confirm whether distribution licence / AKL / izin edar numbers may be published, and obtain them per product/brand | company | not blocking — `certifications` is nullable |
+| 1 | Confirm whether distribution licence / AKL / izin edar numbers may be published, and obtain them per product/principal | company | not blocking — `certifications` is nullable |
 | 2 | Confirm PHP 8.4 selectable in cPanel | dev | build start (low risk; customer confirms) |
 | 3 | Confirm queue worker policy on the plan | dev | deploy step only |
 | 4 | Final product data set / spreadsheet for import | company | content seeding |
@@ -515,8 +522,8 @@ the implementation plan does not silently omit it.
 
 ## 13. Success Criteria (Phase 1)
 
-- Bilingual catalog browsable and filterable by category and brand, with search.
-- Staff can add/edit/publish products, categories, brands, images, and pages via
+- Bilingual catalog browsable and filterable by category and principal, with search.
+- Staff can add/edit/publish products, categories, principals, images, and pages via
   `/admin` without developer involvement.
 - RFQ submissions captured in admin with status workflow and email notification.
 - Public pages render fully server-side and are cacheable.

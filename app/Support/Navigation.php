@@ -17,7 +17,7 @@ class Navigation
     {
         return [
             ['label' => 'ui.nav.products', 'route' => "{$locale}.products.index"],
-            ['label' => 'ui.nav.brands', 'route' => "{$locale}.brands.index"],
+            ['label' => 'ui.nav.principals', 'route' => "{$locale}.principals.index"],
             ['label' => 'ui.nav.about', 'route' => "{$locale}.about"],
             ['label' => 'ui.nav.contact', 'route' => "{$locale}.contact"],
         ];

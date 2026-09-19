@@ -64,9 +64,9 @@ class ProductForm
                     ->getOptionLabelFromRecordUsing(fn ($record): string => $record->name)
                     ->required(),
 
-                Select::make('brand_id')
+                Select::make('principal_id')
                     ->label('Merek')
-                    ->relationship('brand', 'name')
+                    ->relationship('principal', 'name')
                     ->searchable(),
 
                 TextInput::make('slug')

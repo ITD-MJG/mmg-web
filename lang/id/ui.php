@@ -18,7 +18,7 @@
 return [
     'nav' => [
         'products' => 'Produk',
-        'brands' => 'Merek',
+        'principals' => 'Principal',
         'about' => 'Tentang Kami',
         'contact' => 'Kontak',
         'cta' => 'Minta Penawaran',

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->index(['is_published', 'sort_order']);
         });
 
-        Schema::create('brands', function (Blueprint $table) {
+        Schema::create('principals', function (Blueprint $table) {
             $table->id();
             $table->string('slug')->unique();
             $table->string('name');
@@ -39,7 +39,7 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->foreignId('category_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('brand_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('principal_id')->nullable()->constrained()->nullOnDelete();
             $table->string('slug')->unique();
             $table->string('sku')->nullable();
             $table->json('name');
@@ -53,7 +53,7 @@ return new class extends Migration
 
             $table->index(['is_published', 'sort_order']);
             $table->index(['category_id', 'is_published']);
-            $table->index(['brand_id', 'is_published']);
+            $table->index(['principal_id', 'is_published']);
         });
 
         Schema::create('product_images', function (Blueprint $table) {
@@ -88,7 +88,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('product_images');
         Schema::dropIfExists('products');
-        Schema::dropIfExists('brands');
+        Schema::dropIfExists('principals');
         Schema::dropIfExists('categories');
     }
 };

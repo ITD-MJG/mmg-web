@@ -34,14 +34,14 @@
 | `config/app.php` (modify) | `locales` map, `fallback_locale` |
 | `app/Http/Middleware/SetLocale.php` | Resolve + validate locale from the route group, set app locale, share with views |
 | `app/Support/LocaleUrls.php` | Build hreflang alternates + locale switcher URLs from the current route name |
-| `app/Models/{Category,Brand,Product,ProductImage,Inquiry,Page,Setting}.php` | Eloquent models, one per table |
+| `app/Models/{Category,Principal,Product,ProductImage,Inquiry,Page,Setting}.php` | Eloquent models, one per table |
 | `app/Enums/{InquiryStatus,CertificationType}.php` | Backed enums |
 | `app/Http/Requests/StoreInquiryRequest.php` | RFQ validation + honeypot + rate limit rules |
-| `app/Http/Controllers/{Home,Catalog,Product,Brand,Page,Inquiry,Sitemap,AgentDocument}Controller.php` | One controller per route family |
+| `app/Http/Controllers/{Home,Catalog,Product,Principal,Page,Inquiry,Sitemap,AgentDocument}Controller.php` | One controller per route family |
 | `app/Services/AgentDocumentBuilder.php` | Renders `/llms.txt`, `/llms-full.txt`, `/katalog.md` from models |
 | `app/Support/MarkdownRenderer.php` | Converts rich-text JSON to markdown for agent artifacts |
 | `app/Support/WantsMarkdown.php` | Single source of truth for `Accept: text/markdown` preference (q-values) |
-| `app/Observers/{Product,Category,Brand,Page}Observer.php` | Purge cache + regenerate agent docs on save |
+| `app/Observers/{Product,Category,Principal,Page}Observer.php` | Purge cache + regenerate agent docs on save |
 | `app/Providers/Filament/AdminPanelProvider.php` | Filament panel config |
 | `app/Filament/Resources/*` | Admin CRUD, one resource per model |
 | `resources/views/layouts/app.blade.php` | Public layout: meta, hreflang, JSON-LD slot, nav, footer |
@@ -371,16 +371,16 @@ git commit -m "feat(i18n): locale middleware, prefixed route groups, hreflang he
 ### Task 3: Migrations, enums, and models
 
 **Files:**
-- Create: `app/Enums/InquiryStatus.php`, `app/Enums/CertificationType.php`, `database/migrations/*_create_catalog_tables.php`, `database/migrations/*_create_inquiries_table.php`, `database/migrations/*_create_pages_and_settings_tables.php`, `app/Models/{Category,Brand,Product,ProductImage,Inquiry,Page,Setting}.php`, `database/factories/*`, `tests/Feature/CatalogSchemaTest.php`
+- Create: `app/Enums/InquiryStatus.php`, `app/Enums/CertificationType.php`, `database/migrations/*_create_catalog_tables.php`, `database/migrations/*_create_inquiries_table.php`, `database/migrations/*_create_pages_and_settings_tables.php`, `app/Models/{Category,Principal,Product,ProductImage,Inquiry,Page,Setting}.php`, `database/factories/*`, `tests/Feature/CatalogSchemaTest.php`
 - Modify: `database/seeders/DatabaseSeeder.php`
 
 **Interfaces:**
 - Consumes: nothing
 - Produces: models with the following public surface —
-  - All of `Category`, `Brand`, `Product`, `Page` use `Spatie\Translatable\HasTranslations`
+  - All of `Category`, `Principal`, `Product`, `Page` use `Spatie\Translatable\HasTranslations`
   - `Product::$translatable = ['name', 'short_description', 'description']`
   - `Product::coverImage(): ?ProductImage`
-  - `Product::scopePublished($query)`, `Brand::scopePublished($query)`, `Category::scopePublished($query)`, `Page::scopePublished($query)`
+  - `Product::scopePublished($query)`, `Principal::scopePublished($query)`, `Category::scopePublished($query)`, `Page::scopePublished($query)`
   - `ProductImage::$translatable = ['alt']`
   - `Setting::get(string $key, mixed $default = null): mixed` and `Setting::set(string $key, mixed $value): void`
   - `InquiryStatus` enum cases: `New`, `Read`, `Replied`
@@ -392,7 +392,7 @@ git commit -m "feat(i18n): locale middleware, prefixed route groups, hreflang he
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 
@@ -408,14 +408,14 @@ it('stores translatable fields as json and resolves per locale', function () {
     expect($category->fresh()->name)->toBe('Medical Devices');
 });
 
-it('relates products to a category and brand', function () {
+it('relates products to a category and principal', function () {
     $product = Product::factory()
         ->for(Category::factory())
-        ->for(Brand::factory())
+        ->for(Principal::factory())
         ->create();
 
     expect($product->category)->toBeInstanceOf(Category::class)
-        ->and($product->brand)->toBeInstanceOf(Brand::class);
+        ->and($product->principal)->toBeInstanceOf(Principal::class);
 });
 
 it('returns only published products', function () {
@@ -512,7 +512,7 @@ return new class extends Migration
             $table->index(['is_published', 'sort_order']);
         });
 
-        Schema::create('brands', function (Blueprint $table) {
+        Schema::create('principals', function (Blueprint $table) {
             $table->id();
             $table->string('slug')->unique();
             $table->string('name');
@@ -529,7 +529,7 @@ return new class extends Migration
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->foreignId('category_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('brand_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('principal_id')->nullable()->constrained()->nullOnDelete();
             $table->string('slug')->unique();
             $table->string('sku')->nullable();
             $table->json('name');
@@ -543,7 +543,7 @@ return new class extends Migration
 
             $table->index(['is_published', 'sort_order']);
             $table->index(['category_id', 'is_published']);
-            $table->index(['brand_id', 'is_published']);
+            $table->index(['principal_id', 'is_published']);
         });
 
         Schema::create('product_images', function (Blueprint $table) {
@@ -577,7 +577,7 @@ return new class extends Migration
     {
         Schema::dropIfExists('product_images');
         Schema::dropIfExists('products');
-        Schema::dropIfExists('brands');
+        Schema::dropIfExists('principals');
         Schema::dropIfExists('categories');
     }
 };
@@ -674,7 +674,7 @@ class Product extends Model
     public array $translatable = ['name', 'short_description', 'description'];
 
     protected $fillable = [
-        'category_id', 'brand_id', 'slug', 'sku',
+        'category_id', 'principal_id', 'slug', 'sku',
         'name', 'short_description', 'description',
         'specs', 'certifications',
         'is_published', 'sort_order',
@@ -694,9 +694,9 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function brand(): BelongsTo
+    public function principal(): BelongsTo
     {
-        return $this->belongsTo(Brand::class);
+        return $this->belongsTo(Principal::class);
     }
 
     public function images(): HasMany
@@ -770,7 +770,7 @@ class Category extends Model
 }
 ```
 
-`app/Models/Brand.php`:
+`app/Models/Principal.php`:
 
 ```php
 <?php
@@ -783,7 +783,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
-class Brand extends Model
+class Principal extends Model
 {
     use HasFactory;
     use HasTranslations;
@@ -1007,7 +1007,7 @@ class CategoryFactory extends Factory
 }
 ```
 
-`database/factories/BrandFactory.php`:
+`database/factories/PrincipalFactory.php`:
 
 ```php
 <?php
@@ -1017,7 +1017,7 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-class BrandFactory extends Factory
+class PrincipalFactory extends Factory
 {
     public function definition(): array
     {
@@ -1279,7 +1279,7 @@ git commit -m "feat(admin): roles and panel access control"
 - Create: `app/Filament/Resources/ProductResource.php`, `app/Filament/Resources/ProductResource/Pages/{ListProducts,CreateProduct,EditProduct}.php`, `app/Filament/Resources/ProductResource/RelationManagers/ImagesRelationManager.php`, `tests/Feature/Filament/ProductResourceTest.php`
 
 **Interfaces:**
-- Consumes: `Product`, `ProductImage`, `Category`, `Brand`
+- Consumes: `Product`, `ProductImage`, `Category`, `Principal`
 - Produces: `/admin/products` CRUD with ID/EN tabs, a specs repeater, a certifications repeater, and an images relation manager with an `is_cover` toggle
 
 - [ ] **Step 1: Generate the resource and relation manager**
@@ -1377,8 +1377,8 @@ public static function form(Schema $schema): Schema
             ->getOptionLabelFromRecordUsing(fn ($record) => $record->name)
             ->required(),
 
-        Select::make('brand_id')
-            ->relationship('brand', 'name')
+        Select::make('principal_id')
+            ->relationship('principal', 'name')
             ->searchable(),
 
         TextInput::make('slug')->required()->unique(ignoreRecord: true),
@@ -1424,7 +1424,7 @@ public static function form(Schema $schema): Schema
 
 - [ ] **Step 5: Configure the table**
 
-In the same file, `table()` should list `name`, `category.name`, `brand.name`, `is_published`, with a `SelectFilter` for category and brand and a `TernaryFilter` for published state. All searches operate on `name->id` via `->searchable(['name->id', 'name->en'])`.
+In the same file, `table()` should list `name`, `category.name`, `principal.name`, `is_published`, with a `SelectFilter` for category and principal and a `TernaryFilter` for published state. All searches operate on `name->id` via `->searchable(['name->id', 'name->en'])`.
 
 - [ ] **Step 6: Configure the images relation manager**
 
@@ -1468,20 +1468,20 @@ git commit -m "feat(admin): product resource with translations, specs, certifica
 
 ---
 
-### Task 7: Category, Brand, and Page admin resources
+### Task 7: Category, Principal, and Page admin resources
 
 **Files:**
-- Create: `app/Filament/Resources/{CategoryResource,BrandResource,PageResource}.php` + their page classes, `tests/Feature/Filament/ContentResourcesTest.php`
+- Create: `app/Filament/Resources/{CategoryResource,PrincipalResource,PageResource}.php` + their page classes, `tests/Feature/Filament/ContentResourcesTest.php`
 
 **Interfaces:**
-- Consumes: `Category`, `Brand`, `Page`
-- Produces: `/admin/categories`, `/admin/brands`, `/admin/pages`
+- Consumes: `Category`, `Principal`, `Page`
+- Produces: `/admin/categories`, `/admin/principals`, `/admin/pages`
 
 - [ ] **Step 1: Generate the resources**
 
 ```bash
 php artisan make:filament-resource Category --generate --no-interaction
-php artisan make:filament-resource Brand --generate --no-interaction
+php artisan make:filament-resource Principal --generate --no-interaction
 php artisan make:filament-resource Page --generate --no-interaction
 ```
 
@@ -1524,7 +1524,7 @@ Expected: FAIL — generated form has a flat `name` field.
 
 - [ ] **Step 4: Apply the same translatable Tabs pattern to all three resources**
 
-Use the `Tabs` structure from Task 6 Step 4 for `Category` (`name`, `description`), `Brand` (`description` only — `name` is a plain string), and `Page` (`title`, `body`).
+Use the `Tabs` structure from Task 6 Step 4 for `Category` (`name`, `description`), `Principal` (`description` only — `name` is a plain string), and `Page` (`title`, `body`).
 
 `CategoryResource` additionally gets `Select::make('parent_id')->relationship('parent', 'slug')` and a reorderable table.
 
@@ -1537,7 +1537,7 @@ Expected: PASS.
 
 ```bash
 git add -A
-git commit -m "feat(admin): category, brand, and page resources"
+git commit -m "feat(admin): category, principal, and page resources"
 ```
 
 ---
@@ -1801,8 +1801,8 @@ git commit -m "feat(admin): settings page for company and contact details"
 > 3. **Facilities marquee** — a CSS marquee of healthcare facility types
 >    (Rumah Sakit, Klinik, Puskesmas, Laboratorium, Apotek, …). Static list in
 >    `config/site.php` under `facility_types`; no database table (human answer 1c).
-> 4. **Principal marquee** — a CSS marquee of the brands distributed for. Reuses
->    the `brands` table, displayed under the label "Principal" (human answer 2a).
+> 4. **Principal marquee** — a CSS marquee of the principals distributed for. Reuses
+>    the `principals` table, displayed under the label "Principal" (human answer 2a).
 > 5. **Products** — grid 3×2 (six items), sorted by latest created, with a
 >    full-width CTA below linking to the catalog page (human answer 3a).
 > 6. **Contact Us** — 2-column layout: map embed (left), contact details (right)
@@ -1818,7 +1818,7 @@ git commit -m "feat(admin): settings page for company and contact details"
 - Modify: `routes/web.php`, `resources/css/app.css`
 
 **Interfaces:**
-- Consumes: `LocaleUrls`, `Setting`, `Product::published()`, `Brand::published()`
+- Consumes: `LocaleUrls`, `Setting`, `Product::published()`, `Principal::published()`
 - Produces: `layouts/app.blade.php` with slots `@yield('title')`, `@yield('meta')`, `@yield('schema')`, `@yield('content')`; `config/site.php`; `partials/product-card.blade.php` (**Task 11 reuses this — it must not create a second card partial**); **placeholder routes** for the five public pages later tasks own (see Step 7b).
 
 > **Wireframe is authoritative for this task (ruling R1).** `wireframe_home.png`
@@ -1827,7 +1827,7 @@ git commit -m "feat(admin): settings page for company and contact details"
 > 1. **Header** — 3-column: logo (left), menu (centered), CTA button (right).
 > 2. **Hero** — heading, subtext, CTA, background image.
 > 3. **Facilities marquee** — CSS marquee of facility types, static list.
-> 4. **Principal marquee** — CSS marquee of brands, labelled "Principal".
+> 4. **Principal marquee** — CSS marquee of principals, labelled "Principal".
 > 5. **Products** — grid 3×2 (six items), latest created, full-width CTA below.
 > 6. **Contact Us** — 2-column: map embed (left), contact details (right).
 > 7. **Footer** — 2 rows (see Step 5b).
@@ -1842,7 +1842,7 @@ git commit -m "feat(admin): settings page for company and contact details"
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
@@ -1882,9 +1882,9 @@ it('renders the facilities marquee from config', function () {
     $this->get('/')->assertSee($first);
 });
 
-it('renders the principal marquee from published brands only', function () {
-    Brand::factory()->create(['is_published' => true, 'name' => 'Principal Tampil']);
-    Brand::factory()->create(['is_published' => false, 'name' => 'Principal Tersembunyi']);
+it('renders the principal marquee from published principals only', function () {
+    Principal::factory()->create(['is_published' => true, 'name' => 'Principal Tampil']);
+    Principal::factory()->create(['is_published' => false, 'name' => 'Principal Tersembunyi']);
 
     $response = $this->get('/');
 
@@ -1962,7 +1962,7 @@ marquees, no contact details, and no footer render.
 - [ ] **Step 5: Write the nav with a locale switcher**
 
 `resources/views/partials/nav.blade.php` — a 3-column header per the wireframe:
-logo left, menu centered, CTA button right. The menu links to catalog, brands,
+logo left, menu centered, CTA button right. The menu links to catalog, principals,
 about, contact using `route("{$locale}.products.index")` etc.; the CTA button
 links to `route("{$locale}.contact")`. Below `md`, collapse the menu behind a
 toggle rather than wrapping it. Include the locale switcher:
@@ -1998,7 +1998,7 @@ asserted by a test, so build the string in one place:
 
 namespace App\Http\Controllers;
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 use Illuminate\View\View;
 
@@ -2008,11 +2008,11 @@ class HomeController extends Controller
     {
         return view('pages.home', [
             'products' => Product::published()
-                ->with(['category', 'brand', 'images'])
+                ->with(['category', 'principal', 'images'])
                 ->orderByDesc('created_at')
                 ->take(6)
                 ->get(),
-            'principals' => Brand::published()->orderBy('sort_order')->take(12)->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->take(12)->get(),
             'facilities' => config('site.facility_types'),
         ]);
     }
@@ -2099,7 +2099,7 @@ Route::get('/', \App\Http\Controllers\HomeController::class)->name('home');
 
 ### Step 7b: Register placeholder routes for the pages later tasks own
 
-The nav and the home-page CTA link to `products.index`, `brands.index`, `about`,
+The nav and the home-page CTA link to `products.index`, `principals.index`, `about`,
 and `contact`, and each product card links to `products.show`. **None of those
 routes exist yet** — Tasks 11, 12, 13, 14, and 15 create them. Calling `route()`
 on a missing name throws `RouteNotFoundException`, so the home page cannot
@@ -2115,10 +2115,10 @@ Route::view($locale === 'en' ? '/products' : '/produk', 'pages.placeholder')
     ->name('products.index');
 Route::view($locale === 'en' ? '/products/{slug}' : '/produk/{slug}', 'pages.placeholder')
     ->name('products.show');
-Route::view($locale === 'en' ? '/brands' : '/brand', 'pages.placeholder')
-    ->name('brands.index');
-Route::view($locale === 'en' ? '/brands/{slug}' : '/brand/{slug}', 'pages.placeholder')
-    ->name('brands.show');
+Route::view($locale === 'en' ? '/principals' : '/principal', 'pages.placeholder')
+    ->name('principals.index');
+Route::view($locale === 'en' ? '/principals/{slug}' : '/principal/{slug}', 'pages.placeholder')
+    ->name('principals.show');
 Route::view($locale === 'en' ? '/about' : '/tentang-kami', 'pages.placeholder')
     ->name('about');
 Route::view($locale === 'en' ? '/contact' : '/kontak', 'pages.placeholder')
@@ -2131,7 +2131,7 @@ handler and the view do. Create
 `resources/views/pages/placeholder.blade.php` as a minimal view extending the
 layout.
 
-**Watch the `{slug}` placeholders.** `products.show` and `brands.show` are
+**Watch the `{slug}` placeholders.** `products.show` and `principals.show` are
 registered here with a `{slug}` parameter and no model binding. The real routes
 in Tasks 12 and 13 bind the parameter, and their tests cover that; this
 task only needs the names to resolve. Do not add controller logic here.
@@ -2168,8 +2168,8 @@ git commit -m "feat(public): layout, navigation, locale switcher, and home page"
 - Modify: `routes/web.php`
 
 **Interfaces:**
-- Consumes: `Product::published()`, `Category::published()`, `Brand::published()`
-- Produces: `GET /produk` and `GET /en/products` accepting `?category=`, `?brand=`, `?q=`, `?page=`
+- Consumes: `Product::published()`, `Category::published()`, `Principal::published()`
+- Produces: `GET /produk` and `GET /en/products` accepting `?category=`, `?principal=`, `?q=`, `?page=`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2178,7 +2178,7 @@ git commit -m "feat(public): layout, navigation, locale switcher, and home page"
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 
@@ -2203,12 +2203,12 @@ it('filters by category', function () {
         ->assertDontSee('Produk B');
 });
 
-it('filters by brand', function () {
-    $brand = Brand::factory()->create(['name' => 'OneMed']);
-    Product::factory()->for($brand)->create(['name' => ['id' => 'Produk Bermerek', 'en' => 'Branded']]);
-    Product::factory()->create(['name' => ['id' => 'Tanpa Merek', 'en' => 'Unbranded']]);
+it('filters by principal', function () {
+    $principal = Principal::factory()->create(['name' => 'OneMed']);
+    Product::factory()->for($principal)->create(['name' => ['id' => 'Produk Bermerek', 'en' => 'Principaled']]);
+    Product::factory()->create(['name' => ['id' => 'Tanpa Merek', 'en' => 'Unprincipaled']]);
 
-    $this->get('/produk?brand='.$brand->slug)
+    $this->get('/produk?principal='.$principal->slug)
         ->assertSee('Produk Bermerek')
         ->assertDontSee('Tanpa Merek');
 });
@@ -2287,7 +2287,7 @@ Expected: success. If MariaDB rejects `JSON_UNQUOTE(JSON_EXTRACT(...))` in a gen
 
 namespace App\Http\Controllers;
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\Request;
@@ -2299,11 +2299,11 @@ class CatalogController extends Controller
     {
         $products = Product::query()
             ->published()
-            ->with(['category', 'brand', 'images'])
+            ->with(['category', 'principal', 'images'])
             ->when($request->string('category')->toString(), fn ($q, $slug) => $q
                 ->whereHas('category', fn ($c) => $c->where('slug', $slug)))
-            ->when($request->string('brand')->toString(), fn ($q, $slug) => $q
-                ->whereHas('brand', fn ($b) => $b->where('slug', $slug)))
+            ->when($request->string('principal')->toString(), fn ($q, $slug) => $q
+                ->whereHas('principal', fn ($b) => $b->where('slug', $slug)))
             ->when($request->string('q')->toString(), function ($q, $term) {
                 $column = app()->getLocale() === 'en' ? 'name_en_text' : 'name_id_text';
 
@@ -2316,7 +2316,7 @@ class CatalogController extends Controller
         return view('pages.catalog', [
             'products' => $products,
             'categories' => Category::published()->orderBy('sort_order')->get(),
-            'brands' => Brand::published()->orderBy('sort_order')->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->get(),
         ]);
     }
 }
@@ -2324,7 +2324,7 @@ class CatalogController extends Controller
 
 - [ ] **Step 6: Write the view**
 
-`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain `<form method="get">` with `<select name="category">`, `<select name="brand">`, and `<input name="q">` — no JavaScript required, so the page works with JS disabled and stays cacheable. Product cards come from `partials/product-card.blade.php`, which Task 10 already created — reuse it, do not fork it.
+`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain `<form method="get">` with `<select name="category">`, `<select name="principal">`, and `<input name="q">` — no JavaScript required, so the page works with JS disabled and stays cacheable. Product cards come from `partials/product-card.blade.php`, which Task 10 already created — reuse it, do not fork it.
 
 - [ ] **Step 7: Register the route**
 
@@ -2347,7 +2347,7 @@ Expected: PASS, 5 tests.
 
 ```bash
 git add -A
-git commit -m "feat(public): catalog index with category, brand, and fulltext search filters"
+git commit -m "feat(public): catalog index with category, principal, and fulltext search filters"
 ```
 
 ---
@@ -2444,7 +2444,7 @@ class ProductController extends Controller
     {
         $product = Product::query()
             ->published()
-            ->with(['category', 'brand', 'images'])
+            ->with(['category', 'principal', 'images'])
             ->where('slug', $slug)
             ->firstOrFail();
 
@@ -2453,7 +2453,7 @@ class ProductController extends Controller
             'related' => Product::published()
                 ->where('category_id', $product->category_id)
                 ->whereKeyNot($product->getKey())
-                ->with(['category', 'brand', 'images'])
+                ->with(['category', 'principal', 'images'])
                 ->take(4)
                 ->get(),
         ]);
@@ -2485,75 +2485,75 @@ git commit -m "feat(public): product detail page with specs table and RFQ call t
 
 ---
 
-### Task 13: Brand index and detail pages
+### Task 13: Principal index and detail pages
 
 **Files:**
-- Create: `app/Http/Controllers/BrandController.php`, `resources/views/pages/{brands,brand}.blade.php`, `tests/Feature/BrandPageTest.php`
+- Create: `app/Http/Controllers/PrincipalController.php`, `resources/views/pages/{principals,principal}.blade.php`, `tests/Feature/PrincipalPageTest.php`
 - Modify: `routes/web.php`
 
 **Interfaces:**
-- Consumes: `Brand::published()`
-- Produces: `GET /brand`, `GET /brand/{slug}` (+ `/en/brands`, `/en/brands/{slug}`)
+- Consumes: `Principal::published()`
+- Produces: `GET /principal`, `GET /principal/{slug}` (+ `/en/principals`, `/en/principals/{slug}`)
 
 - [ ] **Step 1: Write the failing test**
 
-`tests/Feature/BrandPageTest.php`:
+`tests/Feature/PrincipalPageTest.php`:
 
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 
-it('lists published brands', function () {
-    Brand::factory()->create(['name' => 'OneMed', 'is_published' => true]);
-    Brand::factory()->create(['name' => 'HiddenBrand', 'is_published' => false]);
+it('lists published principals', function () {
+    Principal::factory()->create(['name' => 'OneMed', 'is_published' => true]);
+    Principal::factory()->create(['name' => 'HiddenPrincipal', 'is_published' => false]);
 
-    $this->get('/brand')->assertSee('OneMed')->assertDontSee('HiddenBrand');
+    $this->get('/principal')->assertSee('OneMed')->assertDontSee('HiddenPrincipal');
 });
 
-it('shows a brand with its products', function () {
-    $brand = Brand::factory()->create(['name' => 'Mindray', 'slug' => 'mindray']);
-    Product::factory()->for($brand)->create(['name' => ['id' => 'Monitor Pasien', 'en' => 'Patient Monitor']]);
+it('shows a principal with its products', function () {
+    $principal = Principal::factory()->create(['name' => 'Mindray', 'slug' => 'mindray']);
+    Product::factory()->for($principal)->create(['name' => ['id' => 'Monitor Pasien', 'en' => 'Patient Monitor']]);
 
-    $this->get('/brand/mindray')->assertOk()->assertSee('Monitor Pasien');
+    $this->get('/principal/mindray')->assertOk()->assertSee('Monitor Pasien');
 });
 
-it('404s an unpublished brand', function () {
-    Brand::factory()->create(['slug' => 'draft-brand', 'is_published' => false]);
+it('404s an unpublished principal', function () {
+    Principal::factory()->create(['slug' => 'draft-principal', 'is_published' => false]);
 
-    $this->get('/brand/draft-brand')->assertNotFound();
+    $this->get('/principal/draft-principal')->assertNotFound();
 });
 ```
 
 - [ ] **Step 2: Run the test to verify it fails**
 
-Run: `./vendor/bin/pest tests/Feature/BrandPageTest.php`
+Run: `./vendor/bin/pest tests/Feature/PrincipalPageTest.php`
 Expected: FAIL — routes do not exist.
 
 - [ ] **Step 3: Write the controller**
 
-`app/Http/Controllers/BrandController.php` with two methods: `index()` returning published brands, and `show(string $slug)` returning the brand with `Product::published()->where('brand_id', ...)` paginated.
+`app/Http/Controllers/PrincipalController.php` with two methods: `index()` returning published principals, and `show(string $slug)` returning the principal with `Product::published()->where('principal_id', ...)` paginated.
 
 - [ ] **Step 4: Write the views and routes**
 
-`resources/views/pages/brands.blade.php` (grid of logos + names) and `resources/views/pages/brand.blade.php` (brand header, description, certifications block if present, product grid). Routes:
+`resources/views/pages/principals.blade.php` (grid of logos + names) and `resources/views/pages/principal.blade.php` (principal header, description, certifications block if present, product grid). Routes:
 
 ```php
-Route::get($locale === 'en' ? '/brands' : '/brand', [BrandController::class, 'index'])->name('brands.index');
-Route::get($locale === 'en' ? '/brands/{slug}' : '/brand/{slug}', [BrandController::class, 'show'])->name('brands.show');
+Route::get($locale === 'en' ? '/principals' : '/principal', [PrincipalController::class, 'index'])->name('principals.index');
+Route::get($locale === 'en' ? '/principals/{slug}' : '/principal/{slug}', [PrincipalController::class, 'show'])->name('principals.show');
 ```
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
-Run: `./vendor/bin/pest tests/Feature/BrandPageTest.php`
+Run: `./vendor/bin/pest tests/Feature/PrincipalPageTest.php`
 Expected: PASS, 3 tests.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add -A
-git commit -m "feat(public): brand index and detail pages"
+git commit -m "feat(public): principal index and detail pages"
 ```
 
 ---
@@ -2862,11 +2862,11 @@ git commit -m "feat(public): about and static content pages"
 
 **Files:**
 - Create: `resources/views/components/seo/meta.blade.php`, `tests/Feature/HreflangIntegrityTest.php`
-- Modify: `resources/views/layouts/app.blade.php`, `database/migrations/*_add_meta_columns.php`, and all four models — `app/Models/Product.php`, `app/Models/Category.php`, `app/Models/Brand.php`, `app/Models/Page.php` (adding `meta_title` / `meta_description` to each `$translatable` array and adding the `seoTitle()` / `seoDescription()` accessors)
+- Modify: `resources/views/layouts/app.blade.php`, `database/migrations/*_add_meta_columns.php`, and all four models — `app/Models/Product.php`, `app/Models/Category.php`, `app/Models/Principal.php`, `app/Models/Page.php` (adding `meta_title` / `meta_description` to each `$translatable` array and adding the `seoTitle()` / `seoDescription()` accessors)
 
 **Interfaces:**
 - Consumes: `LocaleUrls::alternates()`
-- Produces: `meta_title` / `meta_description` translatable columns on `products`, `categories`, `brands`, `pages`, plus `seoTitle(): string` and `seoDescription(): string` on each of those models
+- Produces: `meta_title` / `meta_description` translatable columns on `products`, `categories`, `principals`, `pages`, plus `seoTitle(): string` and `seoDescription(): string` on each of those models
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2881,7 +2881,7 @@ use App\Support\LocaleUrls;
 it('emits self-referencing, bidirectional, fully-qualified hreflang on every public route', function () {
     $product = Product::factory()->create(['is_published' => true, 'slug' => 'enema-set']);
 
-    $paths = ['/', '/produk', '/produk/enema-set', '/brand', '/tentang-kami', '/kontak'];
+    $paths = ['/', '/produk', '/produk/enema-set', '/principal', '/tentang-kami', '/kontak'];
 
     foreach ($paths as $path) {
         $response = $this->get($path)->assertOk();
@@ -2916,11 +2916,11 @@ it('includes a self-referencing hreflang for the current locale', function () {
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `./vendor/bin/pest tests/Feature/HreflangIntegrityTest.php`
-Expected: FAIL — hreflang is emitted but product/category/brand routes are missing from the alternate map because their route names differ.
+Expected: FAIL — hreflang is emitted but product/category/principal routes are missing from the alternate map because their route names differ.
 
 - [ ] **Step 3: Add meta columns**
 
-`database/migrations/2026_09_18_000004_add_meta_columns.php` adds nullable `meta_title` and `meta_description` JSON columns to `products`, `categories`, `brands`, and `pages`.
+`database/migrations/2026_09_18_000004_add_meta_columns.php` adds nullable `meta_title` and `meta_description` JSON columns to `products`, `categories`, `principals`, and `pages`.
 
 - [ ] **Step 4: Add fallback accessors**
 
@@ -2938,7 +2938,7 @@ public function seoDescription(): string
 }
 ```
 
-`Brand` differs: it has no `short_description` column, so it must override the
+`Principal` differs: it has no `short_description` column, so it must override the
 description accessor rather than inherit the body above.
 
 ```php
@@ -2953,7 +2953,7 @@ public function seoDescription(): string
 }
 ```
 
-`Brand::$translatable` also needs `meta_title` and `meta_description` added
+`Principal::$translatable` also needs `meta_title` and `meta_description` added
 alongside its existing `description` key.
 
 - [ ] **Step 5: Write the meta component and wire it into the layout**
@@ -2985,7 +2985,7 @@ git commit -m "feat(seo): per-page meta, canonical, and automated hreflang integ
 - Modify: `routes/web.php`, `routes/console.php`
 
 **Interfaces:**
-- Consumes: `Product::published()`, `Category::published()`, `Brand::published()`, `Page::published()`
+- Consumes: `Product::published()`, `Category::published()`, `Principal::published()`, `Page::published()`
 - Produces: `GET /sitemap.xml`, `php artisan mmg:sitemap`
 
 - [ ] **Step 1: Write the failing test**
@@ -3089,8 +3089,8 @@ git commit -m "feat(seo): sitemap generation and robots.txt with AI crawler poli
 - Modify: `resources/views/layouts/app.blade.php`, each public view
 
 **Interfaces:**
-- Consumes: `Setting`, `Product`, `Category`, `Brand`
-- Produces: `SchemaBuilder::organization(): array`, `SchemaBuilder::product(Product $p): array`, `SchemaBuilder::manufacturer(Brand $b): array`, `SchemaBuilder::breadcrumb(array $crumbs): array`, `SchemaBuilder::itemList(array $items, string $name): array`, `SchemaBuilder::wholesaleStore(): array`
+- Consumes: `Setting`, `Product`, `Category`, `Principal`
+- Produces: `SchemaBuilder::organization(): array`, `SchemaBuilder::product(Product $p): array`, `SchemaBuilder::manufacturer(Principal $b): array`, `SchemaBuilder::breadcrumb(array $crumbs): array`, `SchemaBuilder::itemList(array $items, string $name): array`, `SchemaBuilder::wholesaleStore(): array`
 
 - [ ] **Step 1: Write the failing test**
 
@@ -3099,7 +3099,7 @@ git commit -m "feat(seo): sitemap generation and robots.txt with AI crawler poli
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 
 it('emits a valid Organization node with a stable id', function () {
@@ -3122,10 +3122,10 @@ it('emits Product schema with MedicalDevice and specs as additionalProperty', fu
 });
 
 it('references the same manufacturer id from the product page', function () {
-    $brand = Brand::factory()->create(['name' => 'OneMed', 'slug' => 'onemed']);
-    Product::factory()->for($brand)->create(['is_published' => true, 'slug' => 'branded']);
+    $principal = Principal::factory()->create(['name' => 'OneMed', 'slug' => 'onemed']);
+    Product::factory()->for($principal)->create(['is_published' => true, 'slug' => 'principaled']);
 
-    $this->get('/produk/branded')->assertSee('#manufacturer-onemed', false);
+    $this->get('/produk/principaled')->assertSee('#manufacturer-onemed', false);
 });
 
 it('omits the certification node entirely when certifications are empty', function () {
@@ -3162,7 +3162,7 @@ Expected: FAIL — no JSON-LD is emitted.
 
 namespace App\Support;
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 use App\Models\Setting;
 
@@ -3226,9 +3226,9 @@ class SchemaBuilder
             $node['sku'] = $product->sku;
         }
 
-        if ($product->brand) {
-            $node['manufacturer'] = self::manufacturer($product->brand);
-            $node['brand'] = ['@type' => 'Brand', 'name' => $product->brand->name];
+        if ($product->principal) {
+            $node['manufacturer'] = self::manufacturer($product->principal);
+            $node['principal'] = ['@type' => 'Principal', 'name' => $product->principal->name];
         }
 
         if (filled($product->specs)) {
@@ -3261,14 +3261,14 @@ class SchemaBuilder
         return $node;
     }
 
-    public static function manufacturer(Brand $brand): array
+    public static function manufacturer(Principal $principal): array
     {
         return array_filter([
             '@type' => 'Organization',
-            '@id' => url('/').'#manufacturer-'.$brand->slug,
-            'name' => $brand->name,
-            'url' => route(app()->getLocale().'.brands.show', $brand),
-            'logo' => $brand->logo ? asset($brand->logo) : null,
+            '@id' => url('/').'#manufacturer-'.$principal->slug,
+            'name' => $principal->name,
+            'url' => route(app()->getLocale().'.principals.show', $principal),
+            'logo' => $principal->logo ? asset($principal->logo) : null,
         ]);
     }
 
@@ -3350,7 +3350,7 @@ Catalog page — `ItemList` over the paginated result, plus breadcrumb:
 @endpush
 ```
 
-Brand pages — `ItemList` over the brand's products, plus breadcrumb.
+Principal pages — `ItemList` over the principal's products, plus breadcrumb.
 
 About and contact pages — `WholesaleStore` (the distributor type) merged with `LocalBusiness` properties, plus breadcrumb:
 
@@ -3399,7 +3399,7 @@ git commit -m "feat(seo): JSON-LD for Organization, Product, Breadcrumb, and Ite
 - Modify: `routes/web.php`, `routes/console.php`
 
 **Interfaces:**
-- Consumes: `Product::published()`, `Category::published()`, `Brand::published()`, `Setting`, `SchemaBuilder`
+- Consumes: `Product::published()`, `Category::published()`, `Principal::published()`, `Setting`, `SchemaBuilder`
 - Produces:
   - `AgentDocumentBuilder::llms(): string`
   - `AgentDocumentBuilder::llmsFull(): string`
@@ -3414,7 +3414,7 @@ git commit -m "feat(seo): JSON-LD for Organization, Product, Breadcrumb, and Ite
 ```php
 <?php
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 
 it('serves llms.txt with company context and links', function () {
@@ -3506,7 +3506,7 @@ Expected: FAIL — routes do not exist.
 
 namespace App\Services;
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
@@ -3531,7 +3531,7 @@ class AgentDocumentBuilder
             'company' => Setting::get('company_name', 'PT Medquest Mitra Global'),
             'description' => Setting::get('default_meta_description'),
             'categories' => Category::published()->with('products')->orderBy('sort_order')->get(),
-            'brands' => Brand::published()->orderBy('sort_order')->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->get(),
             'contact' => Setting::get('contact_email'),
             'phone' => Setting::get('contact_phone'),
         ])->render());
@@ -3541,7 +3541,7 @@ class AgentDocumentBuilder
     {
         return Cache::remember('agent.katalog', now()->addHours(6), fn () => view('agent.katalog', [
             'products' => Product::published()
-                ->with(['category', 'brand'])
+                ->with(['category', 'principal'])
                 ->orderBy('sort_order')
                 ->get(),
             'markdown' => app(MarkdownRenderer::class),
@@ -3560,7 +3560,7 @@ class AgentDocumentBuilder
 
 - [ ] **Step 5: Write the markdown views**
 
-`resources/views/agent/katalog.blade.php` — for each product emit an H2 with the name, a line for brand and category, a markdown table of specs, a certifications line guarded by `@if (filled($product->certifications))`, and a closing line: `Minta penawaran: [formulir permintaan penawaran]({contactUrl}?product={slug})`. Include a frontmatter-style header with the generation date so freshness is machine-readable.
+`resources/views/agent/katalog.blade.php` — for each product emit an H2 with the name, a line for principal and category, a markdown table of specs, a certifications line guarded by `@if (filled($product->certifications))`, and a closing line: `Minta penawaran: [formulir permintaan penawaran]({contactUrl}?product={slug})`. Include a frontmatter-style header with the generation date so freshness is machine-readable.
 
 - [ ] **Step 6: Write the controller and routes**
 
@@ -3771,7 +3771,7 @@ git commit -m "feat(aeo): markdown content negotiation with Vary: Accept"
 ### Task 21: Cache invalidation observers
 
 **Files:**
-- Create: `app/Observers/{ProductObserver,CategoryObserver,BrandObserver,PageObserver,SettingObserver}.php`, `tests/Feature/CacheInvalidationTest.php`
+- Create: `app/Observers/{ProductObserver,CategoryObserver,PrincipalObserver,PageObserver,SettingObserver}.php`, `tests/Feature/CacheInvalidationTest.php`
 - Modify: `app/Providers/AppServiceProvider.php`
 
 **Interfaces:**
@@ -3858,7 +3858,7 @@ Register in `AppServiceProvider::boot()`:
 ```php
 Product::observe(ProductObserver::class);
 Category::observe(CategoryObserver::class);
-Brand::observe(BrandObserver::class);
+Principal::observe(PrincipalObserver::class);
 Page::observe(PageObserver::class);
 Setting::observe(SettingObserver::class);
 ```
@@ -3900,7 +3900,7 @@ git commit -m "feat(cache): invalidate agent documents and page cache on model s
 
 - [ ] **Step 1: Write the warm-caches command**
 
-`php artisan make:command WarmCaches --no-interaction`, signature `mmg:warm`. It calls `AgentDocumentBuilder` for all three documents, rebuilds the sitemap, and caches settings/categories/brands/navigation.
+`php artisan make:command WarmCaches --no-interaction`, signature `mmg:warm`. It calls `AgentDocumentBuilder` for all three documents, rebuilds the sitemap, and caches settings/categories/principals/navigation.
 
 - [ ] **Step 2: Document the deploy procedure**
 
@@ -3966,7 +3966,7 @@ git commit -m "docs: deployment procedure and hosting risk verification"
 - [ ] Full Pest suite passes (`./vendor/bin/pest`).
 - [ ] Both locales render every public page; `hreflang` integrity test passes.
 - [ ] `/admin` allows `admin` and `editor` roles; denies users with no role.
-- [ ] Staff can create, translate, publish, and reorder products, categories, brands, pages, and images without developer help.
+- [ ] Staff can create, translate, publish, and reorder products, categories, principals, pages, and images without developer help.
 - [ ] Exactly one cover image per product, enforced by the database.
 - [ ] RFQ submissions are stored, rate-limited, honeypot-protected, and emailed.
 - [ ] No price appears in HTML, JSON-LD, or markdown artifacts.

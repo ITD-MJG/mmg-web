@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Brand;
+use App\Models\Principal;
 use App\Models\Product;
 use Illuminate\View\View;
 
@@ -12,7 +12,7 @@ class HomeController extends Controller
     {
         return view('pages.home', [
             'products' => Product::published()
-                ->with(['category', 'brand', 'images'])
+                ->with(['category', 'principal', 'images'])
                 ->orderByDesc('created_at')
                 // created_at is second-precision, so products seeded or
                 // imported in one go share a timestamp. Without a tiebreaker
@@ -21,7 +21,7 @@ class HomeController extends Controller
                 ->orderByDesc('id')
                 ->take(6)
                 ->get(),
-            'principals' => Brand::published()->orderBy('sort_order')->take(12)->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->take(12)->get(),
             'facilities' => config('site.facility_types'),
         ]);
     }

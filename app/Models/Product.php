@@ -17,7 +17,7 @@ class Product extends Model
     public array $translatable = ['name', 'short_description', 'description'];
 
     protected $fillable = [
-        'category_id', 'brand_id', 'slug', 'sku',
+        'category_id', 'principal_id', 'slug', 'sku',
         'name', 'short_description', 'description',
         'specs', 'certifications',
         'is_published', 'sort_order',
@@ -37,9 +37,9 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function brand(): BelongsTo
+    public function principal(): BelongsTo
     {
-        return $this->belongsTo(Brand::class);
+        return $this->belongsTo(Principal::class);
     }
 
     public function images(): HasMany

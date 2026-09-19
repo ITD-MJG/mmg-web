@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Principal;
 use App\Models\Product;
 
 it('stores translatable fields as json and resolves per locale', function () {
@@ -16,14 +16,14 @@ it('stores translatable fields as json and resolves per locale', function () {
     expect($category->fresh()->name)->toBe('Medical Devices');
 });
 
-it('relates products to a category and brand', function () {
+it('relates products to a category and principal', function () {
     $product = Product::factory()
         ->for(Category::factory())
-        ->for(Brand::factory())
+        ->for(Principal::factory())
         ->create();
 
     expect($product->category)->toBeInstanceOf(Category::class)
-        ->and($product->brand)->toBeInstanceOf(Brand::class);
+        ->and($product->principal)->toBeInstanceOf(Principal::class);
 });
 
 it('returns only published products', function () {
@@ -33,14 +33,14 @@ it('returns only published products', function () {
     expect(Product::published()->count())->toBe(1);
 });
 
-it('scopes published categories, brands, and pages', function () {
+it('scopes published categories, principals, and pages', function () {
     Category::factory()->create(['is_published' => true]);
     Category::factory()->create(['is_published' => false]);
-    Brand::factory()->create(['is_published' => true]);
-    Brand::factory()->create(['is_published' => false]);
+    Principal::factory()->create(['is_published' => true]);
+    Principal::factory()->create(['is_published' => false]);
 
     expect(Category::published()->count())->toBe(1)
-        ->and(Brand::published()->count())->toBe(1);
+        ->and(Principal::published()->count())->toBe(1);
 });
 
 it('stores specs and certifications as arrays', function () {

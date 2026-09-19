@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
-class Brand extends Model
+class Principal extends Model
 {
     use HasFactory;
     use HasTranslations;
 
-    /** `name` is a plain string: brand names are not translated. */
+    /** `name` is a plain string: principal names are not translated. */
     public array $translatable = ['description'];
 
     protected $fillable = [

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\Brands\Schemas;
+namespace App\Filament\Resources\Principals\Schemas;
 
 use App\Enums\CertificationType;
 use Filament\Forms\Components\DatePicker;
@@ -13,7 +13,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 
-class BrandForm
+class PrincipalForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -48,15 +48,15 @@ class BrandForm
                 FileUpload::make('logo')
                     ->label('Logo')
                     ->image()
-                    ->directory('brands'),
+                    ->directory('principals'),
 
                 Repeater::make('certifications')
                     ->label('Sertifikasi / Izin Edar')
                     ->helperText('Kosongkan jika belum ada data yang boleh dipublikasikan.')
                     // The blank row the Repeater would otherwise seed fails
-                    // `type`'s `required()` rule and makes an uncertified brand
-                    // unsaveable. Brands without published certifications are
-                    // the normal case.
+                    // `type`'s `required()` rule and makes an uncertified
+                    // principal unsaveable. Principals without published
+                    // certifications are the normal case.
                     ->defaultItems(0)
                     ->schema([
                         Select::make('type')
@@ -79,7 +79,7 @@ class BrandForm
                         DatePicker::make('valid_until')->label('Berlaku sampai')->dehydrated(fn (?string $state): bool => filled($state)),
                         TextInput::make('url')->label('Tautan')->url()->dehydrated(fn (?string $state): bool => filled($state)),
                     ])
-                    // No `mutateDehydratedStateUsing()` here: brands store
+                    // No `mutateDehydratedStateUsing()` here: principals store
                     // `certifications` as a JSON list of rows (unlike product
                     // `specs`, which is a keyed object), and the Repeater's own
                     // `dehydrateItems()` already produces that shape.

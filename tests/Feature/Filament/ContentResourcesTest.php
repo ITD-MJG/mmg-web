@@ -1,13 +1,13 @@
 <?php
 
-use App\Filament\Resources\Brands\Pages\CreateBrand;
-use App\Filament\Resources\Brands\Pages\EditBrand;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Pages\Pages\CreatePage;
-use App\Models\Brand;
+use App\Filament\Resources\Principals\Pages\CreatePrincipal;
+use App\Filament\Resources\Principals\Pages\EditPrincipal;
 use App\Models\Category;
 use App\Models\Page;
+use App\Models\Principal;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Filament\Forms\Components\Repeater;
@@ -57,9 +57,9 @@ it('rejects a category that is its own parent', function () {
     expect($category->fresh()->parent_id)->toBeNull();
 });
 
-it('creates a brand with a plain name and a translatable description', function () {
-    Livewire::test(CreateBrand::class)
-        // Brand names are not translated, so `name` is a single input and must
+it('creates a principal with a plain name and a translatable description', function () {
+    Livewire::test(CreatePrincipal::class)
+        // Principal names are not translated, so `name` is a single input and must
         // not be nested under a locale key like the other resources.
         ->assertFormFieldExists('name')
         ->assertFormFieldDoesNotExist('name.id')
@@ -70,30 +70,30 @@ it('creates a brand with a plain name and a translatable description', function 
             'name' => 'MedQuest',
             'description' => [
                 'id' => 'Merek peralatan medis',
-                'en' => 'Medical equipment brand',
+                'en' => 'Medical equipment principal',
             ],
             'is_published' => true,
         ])
         ->call('create')
         ->assertHasNoFormErrors();
 
-    $brand = Brand::where('slug', 'medquest')->first();
+    $principal = Principal::where('slug', 'medquest')->first();
 
-    expect($brand)->not->toBeNull()
-        ->and($brand->name)->toBe('MedQuest')
-        ->and($brand->getTranslation('description', 'id'))->toBe('Merek peralatan medis')
-        ->and($brand->getTranslation('description', 'en'))->toBe('Medical equipment brand');
+    expect($principal)->not->toBeNull()
+        ->and($principal->name)->toBe('MedQuest')
+        ->and($principal->getTranslation('description', 'id'))->toBe('Merek peralatan medis')
+        ->and($principal->getTranslation('description', 'en'))->toBe('Medical equipment principal');
 });
 
-it('stores the brand certifications repeater as a list of rows', function () {
-    Livewire::test(CreateBrand::class)
+it('stores the principal certifications repeater as a list of rows', function () {
+    Livewire::test(CreatePrincipal::class)
         ->assertFormFieldExists(
             'certifications',
             checkFieldUsing: fn ($field): bool => $field instanceof Repeater,
         )
         ->fillForm([
-            'slug' => 'certified-brand',
-            'name' => 'Certified Brand',
+            'slug' => 'certified-principal',
+            'name' => 'Certified Principal',
             'certifications' => [
                 ['type' => 'izin_edar', 'number' => 'AKL 123'],
             ],
@@ -101,18 +101,18 @@ it('stores the brand certifications repeater as a list of rows', function () {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    $brand = Brand::where('slug', 'certified-brand')->first();
+    $principal = Principal::where('slug', 'certified-principal')->first();
 
-    expect($brand)->not->toBeNull()
-        ->and($brand->certifications)->toBe([['type' => 'izin_edar', 'number' => 'AKL 123']]);
+    expect($principal)->not->toBeNull()
+        ->and($principal->certifications)->toBe([['type' => 'izin_edar', 'number' => 'AKL 123']]);
 });
 
-it('saves a brand whose certifications are null without error', function () {
-    $brand = Brand::factory()->create(['certifications' => null]);
+it('saves a principal whose certifications are null without error', function () {
+    $principal = Principal::factory()->create(['certifications' => null]);
 
-    Livewire::test(EditBrand::class, ['record' => $brand->slug])
+    Livewire::test(EditPrincipal::class, ['record' => $principal->slug])
         ->assertSuccessful()
-        ->assertFormSet(['slug' => $brand->slug])
+        ->assertFormSet(['slug' => $principal->slug])
         ->call('save')
         ->assertHasNoFormErrors();
 });

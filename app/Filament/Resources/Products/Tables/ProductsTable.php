@@ -24,7 +24,7 @@ class ProductsTable
                     ->searchable(['name->id', 'name->en']),
                 TextColumn::make('category.name')
                     ->label('Kategori'),
-                TextColumn::make('brand.name')
+                TextColumn::make('principal.name')
                     ->label('Merek'),
                 TextColumn::make('is_published')
                     ->label('Terbit')
@@ -44,9 +44,9 @@ class ProductsTable
                     ->getOptionLabelFromRecordUsing(fn ($record): string => $record->name)
                     ->searchable()
                     ->preload(),
-                SelectFilter::make('brand_id')
+                SelectFilter::make('principal_id')
                     ->label('Merek')
-                    ->relationship('brand', 'name')
+                    ->relationship('principal', 'name')
                     ->searchable()
                     ->preload(),
                 TernaryFilter::make('is_published')

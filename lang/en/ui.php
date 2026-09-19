@@ -18,7 +18,7 @@
 return [
     'nav' => [
         'products' => 'Products',
-        'brands' => 'Brands',
+        'principals' => 'Principal',
         'about' => 'About Us',
         'contact' => 'Contact',
         'cta' => 'Request a Quote',

@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Brand;
 use App\Models\Category;
+use App\Models\Principal;
 use App\Models\Product;
 use App\Models\Setting;
 
@@ -40,9 +40,9 @@ it('renders the facilities marquee from config', function () {
     $this->get('/')->assertSee($first);
 });
 
-it('renders the principal marquee from published brands only', function () {
-    Brand::factory()->create(['is_published' => true, 'name' => 'Principal Tampil']);
-    Brand::factory()->create(['is_published' => false, 'name' => 'Principal Tersembunyi']);
+it('renders the principal marquee from published principals only', function () {
+    Principal::factory()->create(['is_published' => true, 'name' => 'Principal Tampil']);
+    Principal::factory()->create(['is_published' => false, 'name' => 'Principal Tersembunyi']);
 
     $response = $this->get('/');
 

@@ -34,10 +34,10 @@ foreach (config('app.locales') as $locale => $prefix) {
                 ->name('products.index');
             Route::view($locale === 'en' ? '/products/{slug}' : '/produk/{slug}', 'pages.placeholder')
                 ->name('products.show');
-            Route::view($locale === 'en' ? '/brands' : '/brand', 'pages.placeholder')
-                ->name('brands.index');
-            Route::view($locale === 'en' ? '/brands/{slug}' : '/brand/{slug}', 'pages.placeholder')
-                ->name('brands.show');
+            Route::view($locale === 'en' ? '/principals' : '/principal', 'pages.placeholder')
+                ->name('principals.index');
+            Route::view($locale === 'en' ? '/principals/{slug}' : '/principal/{slug}', 'pages.placeholder')
+                ->name('principals.show');
             Route::view($locale === 'en' ? '/about' : '/tentang-kami', 'pages.placeholder')
                 ->name('about');
             Route::view($locale === 'en' ? '/contact' : '/kontak', 'pages.placeholder')
