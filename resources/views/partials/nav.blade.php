@@ -1,12 +1,7 @@
 @php
     $companyName = \App\Models\Setting::get('company_name', 'Medquest Mitra Global');
     $otherLocale = $locale === 'id' ? 'en' : 'id';
-    $navLinks = [
-        ['label' => __('ui.nav.products'), 'route' => "{$locale}.products.index"],
-        ['label' => __('ui.nav.brands'), 'route' => "{$locale}.brands.index"],
-        ['label' => __('ui.nav.about'), 'route' => "{$locale}.about"],
-        ['label' => __('ui.nav.contact'), 'route' => "{$locale}.contact"],
-    ];
+    $navLinks = \App\Support\Navigation::links($locale);
 @endphp
 
 <header class="sticky top-0 z-40 border-b border-slate-200 bg-white">
@@ -26,7 +21,7 @@
         {{-- Menu (centered) --}}
         <nav class="hidden justify-center gap-6 text-sm font-medium text-slate-700 md:flex" aria-label="Primary">
             @foreach ($navLinks as $link)
-                <a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ $link['label'] }}</a>
+                <a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ __($link['label']) }}</a>
             @endforeach
         </nav>
 
@@ -60,7 +55,7 @@
         <nav class="border-t border-slate-200 px-4 py-3" aria-label="Primary mobile">
             <ul class="flex flex-col gap-3 text-sm font-medium text-slate-700">
                 @foreach ($navLinks as $link)
-                    <li><a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ $link['label'] }}</a></li>
+                    <li><a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ __($link['label']) }}</a></li>
                 @endforeach
                 <li>
                     <a href="{{ route("{$locale}.contact") }}" class="font-semibold text-slate-900">{{ __('ui.nav.cta') }}</a>

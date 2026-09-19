@@ -1,12 +1,7 @@
 @php
     $companyName = \App\Models\Setting::get('company_name', 'Medquest Mitra Global');
     $address = \App\Models\Setting::get('address');
-    $navLinks = [
-        ['label' => __('ui.nav.products'), 'route' => "{$locale}.products.index"],
-        ['label' => __('ui.nav.brands'), 'route' => "{$locale}.brands.index"],
-        ['label' => __('ui.nav.about'), 'route' => "{$locale}.about"],
-        ['label' => __('ui.nav.contact'), 'route' => "{$locale}.contact"],
-    ];
+    $navLinks = \App\Support\Navigation::links($locale);
 @endphp
 
 <footer class="mt-16 border-t border-slate-200 bg-slate-50">
@@ -25,7 +20,7 @@
             <h2 class="text-sm font-semibold text-slate-900">{{ __('ui.footer.nav_heading') }}</h2>
             <ul class="mt-3 flex flex-col gap-2 text-sm text-slate-600">
                 @foreach ($navLinks as $link)
-                    <li><a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ $link['label'] }}</a></li>
+                    <li><a href="{{ route($link['route']) }}" class="hover:text-slate-900">{{ __($link['label']) }}</a></li>
                 @endforeach
             </ul>
         </nav>
