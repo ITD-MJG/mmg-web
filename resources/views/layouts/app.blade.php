@@ -15,9 +15,18 @@
     @stack('schema')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="antialiased text-slate-900">
+<body class="bg-canvas text-ink antialiased">
+    {{-- Skip link: the header is on every page, so keyboard users need a way
+         past it. Visible only on focus. --}}
+    <a href="#main"
+       class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:rounded-control focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-accent-ink">
+        {{ __('ui.nav.skip') }}
+    </a>
+
     @include('partials.nav')
-    <main>@yield('content')</main>
+
+    <main id="main">@yield('content')</main>
+
     @include('partials.footer')
 </body>
 </html>

@@ -23,15 +23,20 @@ return [
         'contact' => 'Kontak',
         'cta' => 'Minta Penawaran',
         'toggle' => 'Buka menu',
+        'skip' => 'Lompat ke konten',
+        'primary' => 'Navigasi utama',
     ],
 
     'hero' => [
         'heading' => 'Solusi Alat Kesehatan untuk Fasilitas Kesehatan Anda',
         'subtext' => 'Distributor alat kesehatan terpercaya untuk rumah sakit, klinik, laboratorium, dan apotek di seluruh Indonesia.',
         'cta' => 'Minta Penawaran',
+        'secondary_cta' => 'Lihat Produk',
+        'image_alt' => 'Peralatan kesehatan di fasilitas medis',
     ],
 
     'sections' => [
+        'facilities' => 'Jenis Fasilitas Kesehatan',
         'principal' => 'Principal',
         'products' => 'Produk Terbaru',
         'contact' => 'Hubungi Kami',
@@ -49,10 +54,13 @@ return [
         'email' => 'Email',
         'whatsapp' => 'WhatsApp',
         'map_title' => 'Peta lokasi',
+        'unconfigured' => 'Informasi kontak belum tersedia. Silakan hubungi kami melalui formulir permintaan penawaran.',
     ],
 
     'footer' => [
         'address' => 'Alamat',
         'nav_heading' => 'Navigasi',
+        'contact_heading' => 'Kontak',
+        'tagline' => 'Distributor alat kesehatan untuk fasilitas kesehatan di Indonesia.',
     ],
 ];

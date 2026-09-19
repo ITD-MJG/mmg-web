@@ -3,12 +3,165 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@theme {
+/*
+|--------------------------------------------------------------------------
+| Design tokens
+|--------------------------------------------------------------------------
+|
+| One source of truth for colour, radius, and rhythm. Views reference the
+| Tailwind utilities these map to (`bg-canvas`, `text-ink-muted`, `rounded-card`)
+| and never hardcode a hex value, so a palette change lands in one file.
+|
+| The palette is warm neutral with a single locked accent. This is a
+| trust-first B2B site for healthcare procurement: credibility comes from
+| restraint, not from colour. The accent is teal, already present in the hero
+| artwork, and it is used for interactive affordances only. No second accent
+| is introduced anywhere.
+|
+| Dark mode is a token swap, not a second stylesheet. Every token below has a
+| value in both schemes so no surface is left undefined if the user's system
+| prefers dark.
+|
+*/
+
+:root {
+    /* Surfaces, lightest to most recessed. */
+    --canvas: #faf9f7;
+    --surface: #ffffff;
+    --surface-muted: #f4f3f0;
+
+    /* Text, strongest to weakest. All three clear WCAG AA (4.5:1) against
+       BOTH --canvas and --surface-muted, because they are used on both. */
+    --ink: #1c1917;
+    --ink-muted: #57534e;
+    --ink-subtle: #6b6560;
+
+    /* Hairlines. Deliberately low contrast: structure without chrome. */
+    --line: #e7e5e4;
+    --line-strong: #d6d3d1;
+
+    /* The single accent. Used for interactive affordances and focus only. */
+    --accent: #0f766e;
+    --accent-hover: #115e59;
+    --accent-ink: #ffffff;
+    --accent-soft: #eef6f5;
+
+    /* Radius. Documented two-tier rule, applied without exception:
+       containers (cards, panels, media) are 12px, controls (buttons,
+       inputs, badges) are 8px. */
+    --r-card: 0.75rem;
+    --r-control: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --canvas: #0c0a09;
+        --surface: #1c1917;
+        --surface-muted: #171412;
+
+        --ink: #fafaf9;
+        --ink-muted: #a8a29e;
+        --ink-subtle: #948e89;
+
+        --line: #292524;
+        --line-strong: #44403c;
+
+        /* Lightened so it stays legible on a dark canvas; the accent's role
+           and usage are unchanged, only its value adapts. */
+        --accent: #2dd4bf;
+        --accent-hover: #5eead4;
+        --accent-ink: #0c0a09;
+        --accent-soft: #14312e;
+    }
+}
+
+/*
+| `inline` so the generated utilities reference these custom properties
+| rather than copying their values. That is what makes the dark-mode override
+| above take effect without a second set of utilities.
+*/
+@theme inline {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
+    --color-canvas: var(--canvas);
+    --color-surface: var(--surface);
+    --color-surface-muted: var(--surface-muted);
+
+    --color-ink: var(--ink);
+    --color-ink-muted: var(--ink-muted);
+    --color-ink-subtle: var(--ink-subtle);
+
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+
+    --color-accent: var(--accent);
+    --color-accent-hover: var(--accent-hover);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-soft: var(--accent-soft);
+
+    --radius-card: var(--r-card);
+    --radius-control: var(--r-control);
+
     --animate-marquee: marquee 30s linear infinite;
 }
+
+/*
+|--------------------------------------------------------------------------
+| Base
+|--------------------------------------------------------------------------
+*/
+
+@layer base {
+    body {
+        background-color: var(--canvas);
+        color: var(--ink);
+    }
+
+    /*
+    | Global focus treatment. The brief's audience includes procurement staff
+    | who may navigate by keyboard, so every interactive element must show a
+    | visible focus state. `:focus-visible` keeps it off mouse clicks.
+    */
+    :focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+        border-radius: var(--radius-control);
+    }
+
+    /* Headings balance their line breaks; body text avoids single-word
+       orphans. Both are progressive enhancements that degrade silently. */
+    h1,
+    h2,
+    h3 {
+        text-wrap: balance;
+    }
+
+    p {
+        text-wrap: pretty;
+    }
+
+    ::selection {
+        background-color: var(--accent);
+        color: var(--accent-ink);
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Marquee
+|--------------------------------------------------------------------------
+|
+| The track holds two identical copies of the list, so shifting by half its
+| own width lands copy two exactly where copy one began: the loop is seamless
+| with no gap and no jump.
+|
+| `overflow: hidden` lives on the wrapper, not the moving element, so the
+| animation can never widen the page. Pausing on hover and honouring
+| `prefers-reduced-motion` are both required: an infinite animation that
+| ignores reduced-motion is an accessibility defect.
+|
+*/
 
 @keyframes marquee {
     from {
@@ -16,19 +169,10 @@
     }
 
     to {
-        /* The track holds two identical copies of the list, so shifting by
-           half its own width lands copy two exactly where copy one began —
-           the loop is seamless with no gap and no jump. */
         transform: translateX(-50%);
     }
 }
 
-/*
- * Marquee track. `overflow: hidden` lives on the wrapper (`.marquee`), not the
- * moving element, so the animation can never widen the page. Pausing on hover
- * and honouring `prefers-reduced-motion` are both required: an infinite
- * animation that ignores reduced-motion is an accessibility defect.
- */
 .marquee:hover > * {
     animation-play-state: paused;
 }
@@ -36,5 +180,43 @@
 @media (prefers-reduced-motion: reduce) {
     .marquee > * {
         animation: none;
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Mobile navigation toggle
+|--------------------------------------------------------------------------
+|
+| The checkbox is `sr-only` and the bars live inside a `<label>`, so they are
+| not siblings of the input and `peer-checked:` cannot reach them. These
+| rules key off the checkbox's `:checked` state via a sibling selector on the
+| header instead, which is the same state with no JavaScript.
+|
+| The two outer bars fold into the middle to form an X; the middle bar fades.
+| Under reduced motion the transition is dropped and the state change is
+| instant, which still communicates open/closed.
+|
+*/
+
+.hamburger-bar {
+    transition: transform 300ms cubic-bezier(0.32, 0.72, 0, 1), opacity 200ms ease;
+}
+
+#nav-toggle:checked ~ div .hamburger-bar:first-child {
+    transform: translateY(7px) rotate(45deg);
+}
+
+#nav-toggle:checked ~ div .hamburger-bar:nth-child(2) {
+    opacity: 0;
+}
+
+#nav-toggle:checked ~ div .hamburger-bar:last-child {
+    transform: translateY(-7px) rotate(-45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hamburger-bar {
+        transition: none;
     }
 }

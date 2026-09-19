@@ -23,15 +23,20 @@ return [
         'contact' => 'Contact',
         'cta' => 'Request a Quote',
         'toggle' => 'Open menu',
+        'skip' => 'Skip to content',
+        'primary' => 'Primary',
     ],
 
     'hero' => [
         'heading' => 'Medical Device Solutions for Your Healthcare Facility',
         'subtext' => 'A trusted medical device distributor for hospitals, clinics, laboratories, and pharmacies across Indonesia.',
         'cta' => 'Request a Quote',
+        'secondary_cta' => 'Browse Products',
+        'image_alt' => 'Medical equipment in a healthcare facility',
     ],
 
     'sections' => [
+        'facilities' => 'Healthcare Facility Types',
         'principal' => 'Principal',
         'products' => 'Latest Products',
         'contact' => 'Contact Us',
@@ -49,10 +54,13 @@ return [
         'email' => 'Email',
         'whatsapp' => 'WhatsApp',
         'map_title' => 'Location map',
+        'unconfigured' => 'Contact details are not available yet. Please reach us through the quote request form.',
     ],
 
     'footer' => [
         'address' => 'Address',
         'nav_heading' => 'Navigation',
+        'contact_heading' => 'Contact',
+        'tagline' => 'Medical device distributor for healthcare facilities across Indonesia.',
     ],
 ];
