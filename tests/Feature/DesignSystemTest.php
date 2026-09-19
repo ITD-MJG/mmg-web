@@ -107,6 +107,7 @@ it('uses design tokens rather than raw palette utilities in views', function () 
         resource_path('views/pages/home.blade.php'),
         resource_path('views/partials/nav.blade.php'),
         resource_path('views/partials/footer.blade.php'),
+        resource_path('views/partials/logo.blade.php'),
         resource_path('views/partials/product-card.blade.php'),
     ]);
 

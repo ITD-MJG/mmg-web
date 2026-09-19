@@ -1,5 +1,4 @@
 @php
-    $companyName = \App\Models\Setting::get('company_name', 'Medquest Mitra Global');
     $otherLocale = $locale === 'id' ? 'en' : 'id';
     $navLinks = \App\Support\Navigation::links($locale);
 @endphp
@@ -13,12 +12,9 @@
     <input type="checkbox" id="nav-toggle" class="peer sr-only">
 
     <div class="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 md:grid-cols-3">
-        {{-- Logo (left). No `logo` setting exists: this is a text wordmark.
-             The accent rule under it is the one decorative mark in the
-             header, and it ties the wordmark to the brand colour. --}}
-        <a href="{{ route("{$locale}.home") }}"
-           class="justify-self-start text-lg font-semibold tracking-tight text-ink">
-            {{ $companyName }}
+        {{-- Logo (left), or the company name when no logo is configured. --}}
+        <a href="{{ route("{$locale}.home") }}" class="justify-self-start">
+            @include('partials.logo', ['height' => 'h-9'])
         </a>
 
         {{-- Menu (centered) --}}

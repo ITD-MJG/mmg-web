@@ -57,6 +57,7 @@ class ManageSettings extends Page
             'contact_phone' => Setting::get('contact_phone'),
             'whatsapp' => Setting::get('whatsapp'),
             'address' => Setting::get('address'),
+            'logo' => Setting::get('logo'),
             'default_meta_title' => Setting::get('default_meta_title'),
             'default_meta_description' => Setting::get('default_meta_description'),
             'socials' => Setting::get('socials', []),
@@ -75,6 +76,15 @@ class ManageSettings extends Page
                         Textarea::make('address')
                             ->label('Alamat')
                             ->rows(3),
+                        // A path in `public/`, not an upload to the storage
+                        // disk: the mark ships with the code so a fresh deploy
+                        // has it, and it is the one image every page needs.
+                        // Stored as a root-relative path ('images/MMG-logo.png')
+                        // and resolved through `asset()`.
+                        TextInput::make('logo')
+                            ->label('Path logo')
+                            ->helperText('Path relatif terhadap folder public, contoh: images/MMG-logo.png. Kosongkan untuk memakai nama perusahaan sebagai teks.')
+                            ->maxLength(255),
                     ]),
 
                 Section::make('Kontak')

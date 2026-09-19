@@ -10,7 +10,7 @@
     {{-- Row 1: wordmark + address (left), nav links and contact (right). --}}
     <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
-            <p class="text-lg font-semibold tracking-tight text-ink">{{ $companyName }}</p>
+            @include('partials.logo', ['height' => 'h-12'])
             @if (filled($address))
                 <address class="mt-3 max-w-xs text-sm not-italic leading-relaxed text-ink-muted">
                     {{ $address }}

@@ -14,9 +14,17 @@
 |
 | The palette is warm neutral with a single locked accent. This is a
 | trust-first B2B site for healthcare procurement: credibility comes from
-| restraint, not from colour. The accent is teal, already present in the hero
-| artwork, and it is used for interactive affordances only. No second accent
-| is introduced anywhere.
+| restraint, not from colour. The accent is the brand blue taken from the MMG
+| logo (`public/images/MMG-logo.png`, dominant colour `#12A4E8`), used for
+| interactive affordances only. No second accent is introduced anywhere.
+|
+| The logo's blue cannot be used verbatim as a light-mode button background:
+| white text on `#12A4E8` is 2.80:1, well under WCAG AA. The light-mode accent
+| is therefore the same hue (198°) darkened to `#0a6f9e`, which clears AA both
+| as a background for white text (5.55:1) and as text on the canvas (5.28:1).
+| Dark mode uses the exact brand hex, which reaches 7.06:1 on the dark canvas.
+| The logo's red (`#FF0000`) is left where it belongs, in the logo, and is not
+| promoted to a second accent.
 |
 | Dark mode is a token swap, not a second stylesheet. Every token below has a
 | value in both schemes so no surface is left undefined if the user's system
@@ -40,11 +48,28 @@
     --line: #e7e5e4;
     --line-strong: #d6d3d1;
 
-    /* The single accent. Used for interactive affordances and focus only. */
-    --accent: #0f766e;
-    --accent-hover: #115e59;
+    /*
+    | Backing plate for the logo.
+    |
+    | The logo's charcoal stroke is #393939. On the light canvas that is fine
+    | (10.98:1) and against the white header it is invisible, but on the dark
+    | canvas it drops to 1.71:1 and the G in the monogram would disappear.
+    | Rather than shipping a second, reversed logo file before the client has
+    | supplied one, the mark sits on this plate in both schemes. It is white in
+    | both, so in light mode it is invisible against the header and in dark mode
+    | it reads as a deliberate chip rather than as an accident.
+    |
+    | A logo is exempt from the WCAG contrast minimums, so the brand's own blue
+    | (2.80:1 on white) is left exactly as supplied rather than being recoloured.
+    */
+    --logo-plate: #ffffff;
+
+    /* The single accent. Used for interactive affordances and focus only.
+       Light mode is the brand blue darkened to clear AA; see the file header. */
+    --accent: #0a6f9e;
+    --accent-hover: #085a80;
     --accent-ink: #ffffff;
-    --accent-soft: #eef6f5;
+    --accent-soft: #eaf4f9;
 
     /* Radius. Documented two-tier rule, applied without exception:
        containers (cards, panels, media) are 12px, controls (buttons,
@@ -66,12 +91,16 @@
         --line: #292524;
         --line-strong: #44403c;
 
-        /* Lightened so it stays legible on a dark canvas; the accent's role
-           and usage are unchanged, only its value adapts. */
-        --accent: #2dd4bf;
-        --accent-hover: #5eead4;
+        /* White in both schemes; see the light-mode comment above. */
+        --logo-plate: #ffffff;
+
+        /* The exact brand hex from the logo. It is legible on the dark canvas
+           (7.06:1) where it was not on the light one, so dark mode uses it
+           verbatim rather than a derived tint. */
+        --accent: #12A4E8;
+        --accent-hover: #38b6f0;
         --accent-ink: #0c0a09;
-        --accent-soft: #14312e;
+        --accent-soft: #0e2a38;
     }
 }
 
@@ -94,6 +123,7 @@
 
     --color-line: var(--line);
     --color-line-strong: var(--line-strong);
+    --color-logo-plate: var(--logo-plate);
 
     --color-accent: var(--accent);
     --color-accent-hover: var(--accent-hover);
