@@ -10,6 +10,7 @@ use App\Models\Page;
 use App\Models\Principal;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\RichEditor;
 use Livewire\Livewire;
@@ -83,6 +84,20 @@ it('creates a principal with a plain name and a translatable description', funct
         ->and($principal->name)->toBe('MedQuest')
         ->and($principal->getTranslation('description', 'id'))->toBe('Merek peralatan medis')
         ->and($principal->getTranslation('description', 'en'))->toBe('Medical equipment principal');
+});
+
+it('crops a principal logo upload to a square', function () {
+    Livewire::test(CreatePrincipal::class)
+        ->assertFormFieldExists('logo', checkFieldUsing: function ($field): bool {
+            // The public carousel frames every mark in a 1:1 box, so an upload
+            // that keeps its own ratio would letterbox inside that frame and
+            // read as a smaller logo than its neighbours. Both calls matter:
+            // the ratio alone only sets the editor's default, while the crop
+            // flag is what applies it without the uploader intervening.
+            return $field instanceof FileUpload
+                && $field->getImageAspectRatio() === '1:1'
+                && $field->shouldAutomaticallyCropImagesToAspectRatio();
+        });
 });
 
 it('stores the principal certifications repeater as a list of rows', function () {

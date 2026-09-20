@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             FirstAdminSeeder::class,
             SettingsSeeder::class,
+            PrincipalSeeder::class,
         ]);
     }
 }

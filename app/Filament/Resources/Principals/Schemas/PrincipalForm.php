@@ -48,6 +48,15 @@ class PrincipalForm
                 FileUpload::make('logo')
                     ->label('Logo')
                     ->image()
+                    // The public carousel gives every principal the same square
+                    // frame, so an upload has to arrive square or it will
+                    // letterbox inside that frame and read as a smaller logo
+                    // than its neighbours. Cropping to 1:1 here is what keeps
+                    // the panel honest: the seeded files are square because
+                    // `scripts/normalize-principal-logos.php` made them so, and
+                    // this is the equivalent guarantee for a hand upload.
+                    ->imageAspectRatio('1:1')
+                    ->automaticallyCropImagesToAspectRatio()
                     ->directory('principals'),
 
                 Repeater::make('certifications')
