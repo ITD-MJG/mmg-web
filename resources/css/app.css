@@ -27,12 +27,44 @@
 | promoted to a second accent.
 |
 | Dark mode is a token swap, not a second stylesheet. Every token below has a
-| value in both schemes so no surface is left undefined if the user's system
-| prefers dark.
+| value in both schemes, so no surface is left undefined when dark is on.
 |
+| Light is the default, and dark is opt-in rather than following the operating
+| system. The previous version keyed off `prefers-color-scheme`, which meant a
+| visitor whose OS happened to be dark saw the dark site whether or not they
+| wanted it, and anyone reviewing the site on a dark-mode laptop would never
+| see the light palette that was actually being signed off. Opting in puts
+| that choice with the visitor instead of their system settings.
+|
+| The switch is the `.dark` class on `<html>`. Nothing in the application sets
+| it, so the default is light; a control that adds it, plus a small inline
+| script to apply a stored preference before first paint, is what would turn
+| dark mode on. Until such a control exists the dark palette is unreachable,
+| which is the intended trade: an unreachable theme is better than one that
+| overrides the visitor's own settings.
+|
+| The `@custom-variant` below is what makes Tailwind's `dark:` utilities follow
+| the same class rather than the media query. Without it `dark:bg-logo-plate`
+| would still respond to the OS and the two mechanisms would disagree.
 */
 
+/*
+| Declared in CSS because Tailwind v4 has no `darkMode` config key. The
+| `:where()` keeps the variant's specificity at zero, so a `dark:` utility and
+| the base utility it overrides are decided by source order, which is the order
+| Tailwind emits them in.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+    /*
+    | Tells the browser this page is light, so the chrome it draws itself —
+    | scrollbars, form controls, the canvas behind the page — is light
+    | regardless of the OS setting. Without it a dark-mode visitor gets dark
+    | scrollbars around a light page, which reads as a rendering bug.
+    */
+    color-scheme: light;
+
     /* Surfaces, lightest to most recessed. */
     --canvas: #faf9f7;
     --surface: #ffffff;
@@ -78,30 +110,37 @@
     --r-control: 0.5rem;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --canvas: #0c0a09;
-        --surface: #1c1917;
-        --surface-muted: #171412;
+/*
+| Dark palette, applied only when the `.dark` class is on `<html>`.
+|
+| `:root.dark` rather than a bare `.dark` for the specificity: `:root` alone is
+| 0-1-0 and so is `.dark`, which would leave the two blocks tied and the
+| outcome resting on source order. This makes the override unambiguous.
+*/
+:root.dark {
+    color-scheme: dark;
 
-        --ink: #fafaf9;
-        --ink-muted: #a8a29e;
-        --ink-subtle: #948e89;
+    --canvas: #0c0a09;
+    --surface: #1c1917;
+    --surface-muted: #171412;
 
-        --line: #292524;
-        --line-strong: #44403c;
+    --ink: #fafaf9;
+    --ink-muted: #a8a29e;
+    --ink-subtle: #948e89;
 
-        /* White in both schemes; see the light-mode comment above. */
-        --logo-plate: #ffffff;
+    --line: #292524;
+    --line-strong: #44403c;
 
-        /* The exact brand hex from the logo. It is legible on the dark canvas
-           (7.06:1) where it was not on the light one, so dark mode uses it
-           verbatim rather than a derived tint. */
-        --accent: #12A4E8;
-        --accent-hover: #38b6f0;
-        --accent-ink: #0c0a09;
-        --accent-soft: #0e2a38;
-    }
+    /* White in both schemes; see the light-mode comment above. */
+    --logo-plate: #ffffff;
+
+    /* The exact brand hex from the logo. It is legible on the dark canvas
+       (7.06:1) where it was not on the light one, so dark mode uses it
+       verbatim rather than a derived tint. */
+    --accent: #12A4E8;
+    --accent-hover: #38b6f0;
+    --accent-ink: #0c0a09;
+    --accent-soft: #0e2a38;
 }
 
 /*
@@ -144,9 +183,24 @@
 | Every page-level container uses `max-w-shell`, so the content width is set
 | here and nowhere else. Header, footer, and page sections must share one value
 | or the gutters stop lining up across the seams.
+|
+| The width is viewport-relative rather than a `rem` cap. A fixed cap does not
+| fill the screen, it stops: at 90rem the container held 90% of a 1600px window
+| but only 75% of a 1920px one and 56% of a 2560px one, so the wider the display
+| the more of it went to empty margin. A percentage keeps the proportion the
+| same at every width, which is what the brief asks for.
+|
+| `85vw` rather than `85%` deliberately. A percentage resolves against the
+| containing block, and on the inner pages the parent is the section, not the
+| viewport. A section with its own `px-4` would therefore compound that padding
+| into the gutter, making the content narrower the deeper it nests. `vw` always
+| means the viewport, so one value gives one content width regardless of depth.
+|
+| Not combined with a cap such as `min(85vw, 120rem)`: that reintroduces the
+| empty margin on the widest displays, which is the thing being fixed.
 */
 @theme {
-    --container-shell: 90rem;
+    --container-shell: 85vw;
 }
 
 /*

@@ -332,6 +332,86 @@ it('advances the carousel on a timer that yields to the visitor', function () {
         ->toBeGreaterThanOrEqual(2, 'Reduced motion must gate both the travel and the timer');
 });
 
+it('renders a real photograph as the hero, with a srcset and reserved space', function () {
+    $html = $this->get('/')->assertOk()->getContent();
+
+    // Scope to the hero. The product grid also renders images further down, so
+    // a page-wide assertion could pass on one of those instead.
+    preg_match('#<section class="border-b border-line">.*?</section>#s', $html, $matches);
+    expect($matches)->not->toBeEmpty('No hero section found');
+    $hero = $matches[0];
+
+    // A photograph, not the abstract placeholder that used to stand in. The
+    // assertion is on the file name rather than a description so replacing the
+    // photograph later does not break the test.
+    expect($hero)->toContain('images/hero-1600.jpg');
+
+    // Two widths behind a srcset, so a phone is not sent the desktop file. The
+    // 800 is asserted as the small candidate: shipping only the 1600 would
+    // still render correctly, which is exactly why this needs pinning.
+    expect($hero)->toContain('srcset')
+        ->toContain('images/hero-800.jpg 800w')
+        ->toContain('images/hero-1600.jpg 1600w');
+
+    // `sizes` is what the browser uses to choose between them. Without it the
+    // srcset is ignored and the full-size file is always fetched, so its
+    // absence would silently undo the point of shipping two files.
+    expect($hero)->toContain('sizes=');
+
+    // Intrinsic dimensions matching the file (1600x900) reserve the slot, so
+    // the headline beside it does not reflow as the image arrives.
+    expect($hero)->toContain('width="1600"')
+        ->toContain('height="900"');
+
+    // The hero is the largest element above the fold. `loading="lazy"` here
+    // would defer the one image that decides perceived speed.
+    expect(str_contains($hero, 'loading="lazy"'))
+        ->toBeFalse('the hero image must not be lazy-loaded');
+});
+
+it('ships the hero files the view references, at the ratio it declares', function () {
+    $html = $this->get('/')->assertOk()->getContent();
+
+    preg_match('#<section class="border-b border-line">.*?</section>#s', $html, $matches);
+    expect($matches)->not->toBeEmpty('No hero section found');
+
+    // A referenced-but-missing image renders as a broken box, and the markup
+    // test above cannot catch that: it only asserts the path is in the HTML.
+    preg_match_all('/images\/(hero-[0-9]+\.jpg)/', $matches[0], $paths);
+    expect($paths[1])->not->toBeEmpty('No hero image referenced');
+
+    foreach (array_unique($paths[1]) as $file) {
+        $path = public_path("images/{$file}");
+
+        expect(is_file($path))->toBeTrue("Missing hero file: public/images/{$file}");
+
+        [$width, $height] = getimagesize($path);
+
+        // 16:9, which is what the `width`/`height` in the view promise. A file
+        // at another ratio would be cropped by `object-cover` and the declared
+        // dimensions would reserve the wrong box.
+        expect($width / $height)->toEqualWithDelta(16 / 9, 0.001, "{$file} is not 16:9");
+    }
+
+    // The source photograph is deliberately untracked, so the committed files
+    // must be present without it. This is the property that lets the
+    // production host serve the hero with no image tooling at all.
+    expect(is_file(public_path('images/hero-1600.jpg')))
+        ->toBeTrue('the committed hero file is missing');
+});
+
+it('does not reference the removed placeholder hero artwork', function () {
+    // The abstract SVG placeholder was replaced by the photograph. Leaving a
+    // reference behind would be a 404 on the busiest section of the site.
+    $blade = file_get_contents(resource_path('views/pages/home.blade.php'));
+
+    expect(str_contains($blade, 'hero.svg'))
+        ->toBeFalse('home.blade.php still references the removed hero.svg');
+
+    expect(is_file(public_path('images/hero.svg')))
+        ->toBeFalse('public/images/hero.svg should have been removed');
+});
+
 it('shows the contact details from settings', function () {
     Setting::set('address', 'Jl. Contoh No. 1, Jakarta');
 

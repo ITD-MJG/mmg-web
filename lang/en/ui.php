@@ -32,7 +32,7 @@ return [
         'subtext' => 'A trusted medical device distributor for hospitals, clinics, laboratories, and pharmacies across Indonesia.',
         'cta' => 'Request a Quote',
         'secondary_cta' => 'Browse Products',
-        'image_alt' => 'Medical equipment in a healthcare facility',
+        'image_alt' => 'Laboratory analysers and a technician in a clinical laboratory',
     ],
 
     'sections' => [

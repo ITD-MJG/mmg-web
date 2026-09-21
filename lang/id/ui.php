@@ -32,7 +32,7 @@ return [
         'subtext' => 'Distributor alat kesehatan terpercaya untuk rumah sakit, klinik, laboratorium, dan apotek di seluruh Indonesia.',
         'cta' => 'Minta Penawaran',
         'secondary_cta' => 'Lihat Produk',
-        'image_alt' => 'Peralatan kesehatan di fasilitas medis',
+        'image_alt' => 'Alat analisis laboratorium dan seorang teknisi di laboratorium klinik',
     ],
 
     'sections' => [

@@ -30,15 +30,42 @@
                 </div>
             </div>
 
-            {{-- The photograph is a real <img> rather than a CSS background so
-                 it can carry alt text and be lazy-decoded. The placeholder
-                 artwork stands in until the client supplies a photograph. --}}
+            {{-- A real <img> rather than a CSS background, so it can carry alt
+                 text and reserve its own space before it arrives.
+
+                 The photograph is a clinical laboratory, which is the part of
+                 the catalogue the company is least visible in and the part a
+                 procurement lead is most likely to be buying for. Its source,
+                 licence, and the script that produced these files are recorded
+                 in `scripts/build-hero-image.php`.
+
+                 Two files behind a `srcset`. The 800 is enough for a phone and
+                 for the image column on a laptop; the 1600 is what a
+                 high-density screen picks up. `src` carries the 1600 so a
+                 browser without `srcset` still gets a full-size image rather
+                 than none.
+
+                 `sizes` is an estimate of the slot, not a measurement: the
+                 hero is a split grid, so the image column is a fraction of the
+                 container on wide screens and the full width below `lg`. It is
+                 deliberately a little generous, because over-reporting the
+                 slot makes the browser choose the larger file and
+                 under-reporting would have it upscale the smaller one. The
+                 width and height are the file's own, so the slot is reserved
+                 and the headline beside it does not move as the image loads.
+
+                 No `loading="lazy"`: this is the largest element above the
+                 fold on every visit, and deferring it would delay the one
+                 image that decides the page's perceived speed. --}}
             <div class="overflow-hidden rounded-card border border-line bg-surface-muted">
-                <img src="{{ asset('images/hero.svg') }}"
+                <img src="{{ asset('images/hero-1600.jpg') }}"
+                     srcset="{{ asset('images/hero-800.jpg') }} 800w, {{ asset('images/hero-1600.jpg') }} 1600w"
+                     sizes="(min-width: 1024px) 46vw, 92vw"
                      alt="{{ __('ui.hero.image_alt') }}"
                      width="1600"
                      height="900"
                      fetchpriority="high"
+                     decoding="async"
                      class="h-full w-full object-cover">
             </div>
         </div>

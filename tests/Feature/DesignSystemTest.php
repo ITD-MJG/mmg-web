@@ -15,9 +15,12 @@ use App\Models\Setting;
 it('defines every design token in both light and dark schemes', function () {
     $css = file_get_contents(resource_path('css/app.css'));
 
-    // Split at the dark-mode block so each scheme can be checked separately.
-    $darkAt = strpos($css, 'prefers-color-scheme: dark');
-    expect($darkAt)->not->toBeFalse('No dark-mode block found in app.css');
+    // Split at the dark block so each scheme can be checked separately. The
+    // selector is `:root.dark` because dark is opt-in; a `prefers-color-scheme`
+    // query here would mean the theme still followed the OS, which is the
+    // behaviour this replaced.
+    $darkAt = strpos($css, ':root.dark {');
+    expect($darkAt)->not->toBeFalse('No :root.dark block found in app.css');
 
     $light = substr($css, 0, $darkAt);
     $dark = substr($css, $darkAt);
@@ -35,6 +38,52 @@ it('defines every design token in both light and dark schemes', function () {
         expect($light)->toMatch('/'.preg_quote($token, '/').'\s*:/', "{$token} missing from light scheme");
         expect($dark)->toMatch('/'.preg_quote($token, '/').'\s*:/', "{$token} missing from dark scheme");
     }
+});
+
+it('defaults to light rather than following the operating system', function () {
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    // The theme is driven by the `.dark` class, so nothing may read the OS
+    // preference. This is the whole requirement: a dark-mode laptop must not
+    // be served the dark palette unasked. Asserted against the token layer
+    // rather than the whole file because the generated Tailwind output
+    // legitimately contains `prefers-reduced-motion`.
+    expect($css)->not->toContain('@media (prefers-color-scheme: dark)');
+
+    // Light is the base scheme, so the base block must declare it. This is
+    // what keeps browser-drawn chrome (scrollbars, form controls) light even
+    // when the OS is dark.
+    expect($css)->toContain('color-scheme: light');
+
+    // The class-scoped variant is what makes `dark:` utilities follow the
+    // same switch as the tokens. Without it the tokens would be light while
+    // `dark:bg-logo-plate` still tracked the OS, and the two would disagree.
+    expect($css)->toContain('@custom-variant dark')
+        ->toContain('.dark *');
+
+    // Nothing in the shipped application may set the class, or the default
+    // would not be light. A toggle is what would introduce one.
+    $views = glob(resource_path('views/**/*.blade.php'));
+    $views = array_merge($views, glob(resource_path('views/*.blade.php')));
+    $views = array_unique($views);
+
+    foreach ($views as $path) {
+        $relative = str_replace(resource_path('views/'), '', $path);
+
+        // `welcome.blade.php` is the untouched Laravel default: not routed,
+        // not part of the site, and full of stock `dark:` classes.
+        if ($relative === 'welcome.blade.php') {
+            continue;
+        }
+
+        expect((bool) preg_match('/<html[^>]*\bdark\b/', file_get_contents($path)))
+            ->toBeFalse("{$relative} hardcodes the dark class on <html>");
+    }
+
+    $js = file_get_contents(resource_path('js/app.js'));
+
+    expect((bool) preg_match('/classList\.add\(\s*[\'"]dark[\'"]\s*\)/', $js))
+        ->toBeFalse('app.js adds the dark class, so light is no longer the default');
 });
 
 it('keeps the two-tier radius scale the views rely on', function () {
@@ -135,13 +184,27 @@ it('sizes every page container from a single shell token', function () {
 
     // Tailwind v4 maps `--container-*` to the `max-w-*` utilities, so this one
     // value is the content width for the whole site.
-    preg_match('/--container-shell:\s*([\d.]+)rem/', $css, $matches);
+    preg_match('/--container-shell:\s*([\d.]+)(vw|rem)/', $css, $matches);
     expect($matches)->not->toBeEmpty('No --container-shell token in app.css');
 
-    // The brief is a wide desktop canvas. Below 7xl (80rem) the container is
-    // narrower than the Tailwind default this replaced, which would be a
-    // silent regression back to the cramped layout.
-    expect((float) $matches[1])->toBeGreaterThanOrEqual(80.0);
+    // The brief is a viewport-relative width: the container should keep the same
+    // proportion of the screen at every size, rather than stopping at a cap and
+    // letting the margin grow. A `rem` value here is the regression this guards:
+    // it would still be a legal CSS length, and the page would still look right
+    // on a laptop, so nothing else would catch it.
+    expect($matches[2])->toBe('vw', 'the shell must be viewport-relative, not a fixed cap');
+
+    // "Increase the width to 85%" is the requirement. Asserted as an exact
+    // value rather than a range, because the whole point of a percentage is
+    // that the proportion is deliberate.
+    expect((float) $matches[1])->toBe(85.0);
+
+    // `vw`, not `%`. A percentage resolves against the containing block, so a
+    // section with its own padding would compound it into the gutter and the
+    // content would get narrower the deeper it nested. The two are
+    // indistinguishable on the home page and only diverge on inner pages,
+    // which is exactly the kind of bug that ships.
+    expect($css)->not->toContain('--container-shell: 85%');
 
     $views = [
         'pages/home.blade.php',
