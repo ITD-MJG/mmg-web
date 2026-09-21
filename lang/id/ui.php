@@ -48,6 +48,27 @@ return [
         'detail' => 'Lihat Detail',
     ],
 
+    'catalog' => [
+        'heading' => 'Produk',
+        'intro' => 'Jelajahi katalog alat kesehatan kami berdasarkan kategori dan principal.',
+        'filters' => 'Filter',
+        'filter_category' => 'Kategori',
+        'filter_principal' => 'Principal',
+        'filter_all' => 'Semua',
+        'search_label' => 'Cari produk',
+        'search_placeholder' => 'Nama produk',
+        'submit' => 'Terapkan',
+        'clear' => 'Hapus filter',
+        'results' => 'Menampilkan :from sampai :to dari :total produk',
+        'empty' => 'Tidak ada produk yang cocok dengan filter Anda.',
+    ],
+
+    'pagination' => [
+        'previous' => 'Halaman sebelumnya',
+        'next' => 'Halaman berikutnya',
+        'label' => 'Navigasi halaman',
+    ],
+
     'carousel' => [
         'previous' => 'Principal sebelumnya',
         'next' => 'Principal berikutnya',

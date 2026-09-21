@@ -48,6 +48,27 @@ return [
         'detail' => 'View Details',
     ],
 
+    'catalog' => [
+        'heading' => 'Products',
+        'intro' => 'Browse our medical device catalogue by category and principal.',
+        'filters' => 'Filters',
+        'filter_category' => 'Category',
+        'filter_principal' => 'Principal',
+        'filter_all' => 'All',
+        'search_label' => 'Search products',
+        'search_placeholder' => 'Product name',
+        'submit' => 'Apply',
+        'clear' => 'Clear filters',
+        'results' => 'Showing :from to :to of :total products',
+        'empty' => 'No products match your filters.',
+    ],
+
+    'pagination' => [
+        'previous' => 'Previous page',
+        'next' => 'Next page',
+        'label' => 'Pagination',
+    ],
+
     'carousel' => [
         'previous' => 'Previous principals',
         'next' => 'Next principals',

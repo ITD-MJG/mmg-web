@@ -500,7 +500,8 @@ it('hides the carousel arrows on a phone and pages on its own there', function (
     // the `[hidden]` rule in the UA stylesheet, so `md:block` would have pinned
     // both arrows open at every width and left `reflect()` unable to disable
     // them at the ends of the register.
-    expect(substr_count($section[0], 'max-md:hidden'))->toBe(2, 'both arrows must be hidden below md');    expect($section[0])->not->toContain('md:block');
+    expect(substr_count($section[0], 'max-md:hidden'))->toBe(2, 'both arrows must be hidden below md');
+    expect($section[0])->not->toContain('md:block');
 
     // The strip still pages with no controls: the timer is what drives it, and
     // `reflect()` hides the arrows rather than the script depending on them.

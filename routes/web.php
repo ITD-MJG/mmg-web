@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 
@@ -24,13 +25,15 @@ foreach (config('app.locales') as $locale => $prefix) {
             Route::get('/', HomeController::class)->name('home');
 
             // Placeholder routes for pages built in later tasks. Each is replaced
-            // by its real controller when that task lands — see Tasks 11, 12, 13,
-            // 14, 15. They exist now because the nav and the product card call
-            // route() on these names, and route() on an unregistered name throws
+            // by its real controller when that task lands — see Tasks 12, 13, 14,
+            // 15. They exist because the nav and the product card call route()
+            // on these names, and route() on an unregistered name throws
             // RouteNotFoundException, which would stop the home page rendering at
             // all. The paths are the real locale-conditional paths, so only the
             // handler and view change when the real routes arrive.
-            Route::view($locale === 'en' ? '/products' : '/produk', 'pages.placeholder')
+            //
+            // `products.index` is real from Task 11 and no longer a placeholder.
+            Route::get($locale === 'en' ? '/products' : '/produk', CatalogController::class)
                 ->name('products.index');
             Route::view($locale === 'en' ? '/products/{slug}' : '/produk/{slug}', 'pages.placeholder')
                 ->name('products.show');

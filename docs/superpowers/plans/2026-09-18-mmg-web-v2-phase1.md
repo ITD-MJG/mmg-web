@@ -2163,13 +2163,40 @@ git commit -m "feat(public): layout, navigation, locale switcher, and home page"
 ### Task 11: Catalog index with filters and search
 
 **Files:**
-- Create: `app/Http/Controllers/CatalogController.php`, `resources/views/pages/catalog.blade.php`, `database/migrations/*_add_product_fulltext_index.php`, `tests/Feature/CatalogTest.php`
+- Create: `app/Http/Controllers/CatalogController.php`, `resources/views/pages/catalog.blade.php`, `database/migrations/*_add_product_fulltext_index.php`, `resources/views/vendor/pagination/tailwind.blade.php`, `tests/Feature/CatalogTest.php`
 - Reuses: `resources/views/partials/product-card.blade.php` — **created in Task 10, do not create a second one**
-- Modify: `routes/web.php`
+- Modify: `routes/web.php`, `app/Providers/AppServiceProvider.php`, `lang/id/ui.php`, `lang/en/ui.php`
 
 **Interfaces:**
 - Consumes: `Product::published()`, `Category::published()`, `Principal::published()`
 - Produces: `GET /produk` and `GET /en/products` accepting `?category=`, `?principal=`, `?q=`, `?page=`
+
+**Corrected before dispatch (rulings R18–R24, recorded in the SDD ledger).** The
+original text of this task had four defects that would have shipped broken code:
+
+1. **R18 — the FULLTEXT index and the MATCH clause disagreed.** The migration
+   built one composite index over `(name_id_text, name_en_text)` while the
+   controller searched `MATCH(name_id_text)`. MariaDB rejects that combination:
+   `ERROR 1191 (HY000): Can't find FULLTEXT index matching the column list`.
+   Every search request would have thrown. Now two single-column indexes.
+   Verified on the real server, not reasoned about. Step 4's `->>` fallback is
+   also removed: it is a **syntax error** on MariaDB 13.0.2, while the
+   `JSON_UNQUOTE(JSON_EXTRACT(...))` form is accepted.
+2. **R19 — `AGAINST` with an operator-only term is a SQL syntax error.** `+`,
+   `-`, `***`, `A-`, `vitamin+` all raise `ERROR 1064`. The term is sanitised.
+3. **R20 — `innodb_ft_min_token_size` is 3, so `AB` matches nothing.** A real
+   product is `AB-100 Analyzer` and a two-character query is legitimate.
+   Sub-minimum terms fall back to `LIKE`.
+4. **R21 — three of the five tests could not fail.** They assert
+   `assertDontSee` on strings that appear in no rendered field. Each now carries
+   a positive control.
+
+Also corrected: `orderBy('sort_order')` gains an `id` tiebreak (every factory
+row shares `sort_order = 0` and a second-precision `created_at`, so pagination
+across a tie group is non-deterministic — the same defect Task 10 fixed for the
+home grid), the UI strings move into `lang/*/ui.php` per R14, and the stock
+`pagination::tailwind` view is replaced because it renders `text-gray-*` and
+`bg-white` utilities that DesignSystemTest bans.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2182,9 +2209,24 @@ use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
 
+// Every exclusion assertion below is preceded by a positive control on the
+// SAME response. The original draft asserted only `assertDontSee($excluded)`,
+// which passes when the excluded product's name appears in no rendered field at
+// all — so the test proved nothing about filtering. Each excluded product's name
+// is also seeded into a field that genuinely renders (the `<h3>` title), so the
+// negative assertion has something to be wrong about.
+
 it('lists only published products', function () {
-    Product::factory()->create(['is_published' => true, 'name' => ['id' => 'Terbit', 'en' => 'Published']]);
-    Product::factory()->create(['is_published' => false, 'name' => ['id' => 'Draf', 'en' => 'Draft']]);
+    Product::factory()->create([
+        'is_published' => true,
+        'name' => ['id' => 'Terbit', 'en' => 'Published'],
+        'short_description' => ['id' => 'Terbit desc', 'en' => 'Published desc'],
+    ]);
+    Product::factory()->create([
+        'is_published' => false,
+        'name' => ['id' => 'Draf', 'en' => 'Draft'],
+        'short_description' => ['id' => 'Draf desc', 'en' => 'Draft desc'],
+    ]);
 
     $this->get('/produk')
         ->assertSee('Terbit')
@@ -2198,6 +2240,11 @@ it('filters by category', function () {
     Product::factory()->for($a)->create(['name' => ['id' => 'Produk A', 'en' => 'Product A']]);
     Product::factory()->for($b)->create(['name' => ['id' => 'Produk B', 'en' => 'Product B']]);
 
+    // Positive control first: without it this test passed on a 500 response.
+    $this->get('/produk')
+        ->assertSee('Produk A')
+        ->assertSee('Produk B');
+
     $this->get('/produk?category='.$a->slug)
         ->assertSee('Produk A')
         ->assertDontSee('Produk B');
@@ -2207,6 +2254,10 @@ it('filters by principal', function () {
     $principal = Principal::factory()->create(['name' => 'OneMed']);
     Product::factory()->for($principal)->create(['name' => ['id' => 'Produk Bermerek', 'en' => 'Principaled']]);
     Product::factory()->create(['name' => ['id' => 'Tanpa Merek', 'en' => 'Unprincipaled']]);
+
+    $this->get('/produk')
+        ->assertSee('Produk Bermerek')
+        ->assertSee('Tanpa Merek');
 
     $this->get('/produk?principal='.$principal->slug)
         ->assertSee('Produk Bermerek')
@@ -2222,6 +2273,42 @@ it('searches by name', function () {
         ->assertDontSee('Kursi Roda');
 });
 
+it('falls back to a like match for terms below the fulltext minimum', function () {
+    // innodb_ft_min_token_size is 3 on this server, so `AB` can never match
+    // through FULLTEXT. Real products carry SKU-prefixed names, so a
+    // two-character query is a legitimate thing for a user to type.
+    Product::factory()->create(['name' => ['id' => 'AB-100 Analyzer', 'en' => 'AB-100 Analyzer']]);
+    Product::factory()->create(['name' => ['id' => 'Kursi Roda', 'en' => 'Wheelchair']]);
+
+    $this->get('/produk?q=AB')
+        ->assertSee('AB-100 Analyzer')
+        ->assertDontSee('Kursi Roda');
+});
+
+it('does not error on a query made only of fulltext operators', function () {
+    // `AGAINST('+' IN BOOLEAN MODE)` is ERROR 1064, not an empty result.
+    Product::factory()->create(['name' => ['id' => 'Enema Set Steril', 'en' => 'Sterile Enema Set']]);
+
+    foreach (['+', '-', '***', 'A-', 'vitamin+'] as $term) {
+        $this->get('/produk?q='.urlencode($term))->assertOk();
+    }
+});
+
+it('searches the locale-appropriate name column', function () {
+    // Both names are unique across the set, so a leak between columns is
+    // visible in either direction.
+    Product::factory()->create(['name' => ['id' => 'Enema Set Steril', 'en' => 'Sterile Enema Set']]);
+
+    $this->get('/produk?q=Enema')
+        ->assertSee('Enema Set Steril');
+
+    $this->get('/produk?q=Sterile')
+        ->assertDontSee('Enema Set Steril');
+
+    $this->get('/en/products?q=Sterile')
+        ->assertSee('Sterile Enema Set');
+});
+
 it('serves the english catalog under /en/products', function () {
     Product::factory()->create(['name' => ['id' => 'Nama Indonesia', 'en' => 'English Name']]);
 
@@ -2229,6 +2316,25 @@ it('serves the english catalog under /en/products', function () {
         ->assertOk()
         ->assertSee('English Name')
         ->assertDontSee('Nama Indonesia');
+});
+
+it('paginates the catalog and keeps the filters in the page links', function () {
+    $category = Category::factory()->create(['name' => ['id' => 'Kategori A', 'en' => 'Category A']]);
+
+    Product::factory()->count(25)->for($category)->create([
+        'name' => ['id' => 'Produk Halaman', 'en' => 'Paged Product'],
+    ]);
+
+    $first = $this->get('/produk?category='.$category->slug)->assertOk();
+
+    // 24 per page, so 25 rows means exactly two pages.
+    $first->assertSee('page=2');
+
+    $second = $this->get('/produk?category='.$category->slug.'&page=2')->assertOk();
+
+    // withQueryString() is what keeps the filter on the second page; without it
+    // page 2 is the unfiltered catalog.
+    expect($second->getContent())->toContain('category='.$category->slug);
 });
 ```
 
@@ -2253,17 +2359,32 @@ return new class extends Migration
     {
         // Generated columns give a stable, indexable text target for both
         // locales. JSON path extraction is not directly FULLTEXT-indexable.
+        //
+        // `JSON_UNQUOTE(JSON_EXTRACT(...))` rather than the `->>` operator:
+        // MariaDB 13 rejects `->>` inside a generated column with a syntax
+        // error. Verified on the real server, both forms.
         DB::statement('ALTER TABLE products ADD COLUMN name_id_text TEXT
             GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(name, "$.id"))) STORED');
         DB::statement('ALTER TABLE products ADD COLUMN name_en_text TEXT
             GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) STORED');
 
-        DB::statement('ALTER TABLE products ADD FULLTEXT products_fulltext (name_id_text, name_en_text)');
+        // TWO single-column indexes, not one composite index.
+        //
+        // A MATCH clause must name exactly the columns of one FULLTEXT index.
+        // With a composite `(name_id_text, name_en_text)` index, the
+        // locale-selected `MATCH(name_id_text)` raises
+        // `ERROR 1191: Can't find FULLTEXT index matching the column list`,
+        // which would have made every search request a 500. Verified against
+        // MariaDB 13.0.2: composite index + single-column MATCH fails; two
+        // single-column indexes both resolve.
+        DB::statement('ALTER TABLE products ADD FULLTEXT products_name_id_fulltext (name_id_text)');
+        DB::statement('ALTER TABLE products ADD FULLTEXT products_name_en_fulltext (name_en_text)');
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE products DROP INDEX products_fulltext');
+        DB::statement('ALTER TABLE products DROP INDEX products_name_id_fulltext');
+        DB::statement('ALTER TABLE products DROP INDEX products_name_en_fulltext');
         DB::statement('ALTER TABLE products DROP COLUMN name_id_text');
         DB::statement('ALTER TABLE products DROP COLUMN name_en_text');
     }
@@ -2276,7 +2397,9 @@ return new class extends Migration
 php artisan migrate
 ```
 
-Expected: success. If MariaDB rejects `JSON_UNQUOTE(JSON_EXTRACT(...))` in a generated column, replace with `name->>"$.id"` syntax and re-run.
+Expected: success, both indexes created. The generated columns inherit the
+table's `utf8mb4_unicode_ci` collation even though `name` is `utf8mb4_bin`, so
+matching is case-insensitive — confirmed, not assumed.
 
 - [ ] **Step 5: Write the controller**
 
@@ -2290,53 +2413,202 @@ namespace App\Http\Controllers;
 use App\Models\Principal;
 use App\Models\Category;
 use App\Models\Product;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class CatalogController extends Controller
 {
+    /**
+     * Columns the FULLTEXT indexes cover, keyed by locale.
+     */
+    private const NAME_COLUMN = [
+        'id' => 'name_id_text',
+        'en' => 'name_en_text',
+    ];
+
+    /**
+     * `innodb_ft_min_token_size` on the target server. A word shorter than
+     * this is not in the FULLTEXT index at all, so it can never match through
+     * MATCH and the query has to fall back to LIKE.
+     */
+    private const MIN_TOKEN = 3;
+
     public function __invoke(Request $request): View
     {
+        $locale = app()->getLocale();
+        $column = self::NAME_COLUMN[$locale] ?? self::NAME_COLUMN['id'];
+        $term = $this->searchTerm($request->string('q')->toString());
+
         $products = Product::query()
             ->published()
             ->with(['category', 'principal', 'images'])
             ->when($request->string('category')->toString(), fn ($q, $slug) => $q
                 ->whereHas('category', fn ($c) => $c->where('slug', $slug)))
             ->when($request->string('principal')->toString(), fn ($q, $slug) => $q
-                ->whereHas('principal', fn ($b) => $b->where('slug', $slug)))
-            ->when($request->string('q')->toString(), function ($q, $term) {
-                $column = app()->getLocale() === 'en' ? 'name_en_text' : 'name_id_text';
-
-                return $q->whereRaw("MATCH({$column}) AGAINST (? IN BOOLEAN MODE)", [$term.'*']);
-            })
+                ->whereHas('principal', fn ($p) => $p->where('slug', $slug)))
+            ->when($term !== '', fn ($q) => $this->applySearch($q, $column, $term))
             ->orderBy('sort_order')
+            // sort_order defaults to 0 for every row, and created_at is
+            // second-precision, so a catalogue imported in one pass is one
+            // large tie group. Without an id tiebreak the page boundary falls
+            // in a different place on each request and a visitor paging
+            // through sees a product twice and misses another. Same defect
+            // Task 10 fixed for the home grid.
+            ->orderByDesc('id')
             ->paginate(24)
             ->withQueryString();
 
         return view('pages.catalog', [
             'products' => $products,
-            'categories' => Category::published()->orderBy('sort_order')->get(),
-            'principals' => Principal::published()->orderBy('sort_order')->get(),
+            'categories' => Category::published()->orderBy('sort_order')->orderBy('id')->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->orderBy('id')->get(),
+            'term' => $request->string('q')->toString(),
+            'activeCategory' => $request->string('category')->toString(),
+            'activePrincipal' => $request->string('principal')->toString(),
         ]);
+    }
+
+    /**
+     * Reduce a raw query string to something BOOLEAN MODE cannot choke on.
+     *
+     * `AGAINST('+' IN BOOLEAN MODE)` is a SQL syntax error (1064), not an empty
+     * result, so a visitor typing an operator into the search box would get a
+     * 500. `+ - * " ~ < > ( ) @` are the operators; everything outside letters,
+     * digits, and the separators that appear inside real product names is
+     * dropped, then runs of whitespace are collapsed.
+     */
+    private function searchTerm(string $raw): string
+    {
+        $cleaned = preg_replace('/[^\p{L}\p{N}\s.\/\\-]+/u', ' ', $raw) ?? '';
+        $cleaned = preg_replace('/\s+/u', ' ', $cleaned) ?? '';
+
+        return trim($cleaned);
+    }
+
+    /**
+     * FULLTEXT first, LIKE when FULLTEXT cannot serve the term.
+     *
+     * `innodb_ft_min_token_size` is 3 on this server, so `AB` — the SKU prefix
+     * of a real product, `AB-100 Analyzer` — can never match through the
+     * index. A term is searched through FULLTEXT only when every one of its
+     * words is at least that long; otherwise the whole term falls back to a
+     * LIKE scan against the same locale column. Measured on the real server:
+     * FULLTEXT is case-insensitive and supports the `*` suffix wildcard; LIKE
+     * inherits the column's `utf8mb4_unicode_ci` collation, so it is
+     * case-insensitive too.
+     */
+    private function applySearch(Builder $query, string $column, string $term): Builder
+    {
+        $words = preg_split('/\s+/u', $term, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $indexable = $words !== [] && collect($words)->every(
+            fn (string $word) => mb_strlen($word) >= self::MIN_TOKEN,
+        );
+
+        if (! $indexable) {
+            return $query->where($column, 'like', '%'.addcslashes($term, '%_\\').'%');
+        }
+
+        return $query->whereRaw(
+            "MATCH({$column}) AGAINST (? IN BOOLEAN MODE)",
+            [$this->booleanTerm($words)],
+        );
+    }
+
+    /**
+     * A BOOLEAN MODE expression with every word prefix-matched.
+     *
+     * Words are quoted so that punctuation inside a real name (`AB-100`) is not
+     * read as an operator, and each is suffixed with `*` so a partial word
+     * still matches. Bare words are OR-ed by MySQL, which is the behaviour a
+     * single search box should have.
+     */
+    private function booleanTerm(array $words): string
+    {
+        $parts = array_map(
+            fn (string $word) => '"'.str_replace('"', '', $word).'"*',
+            $words,
+        );
+
+        return implode(' ', $parts);
     }
 }
 ```
 
 - [ ] **Step 6: Write the view**
 
-`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain `<form method="get">` with `<select name="category">`, `<select name="principal">`, and `<input name="q">` — no JavaScript required, so the page works with JS disabled and stays cacheable. Product cards come from `partials/product-card.blade.php`, which Task 10 already created — reuse it, do not fork it.
+`resources/views/pages/catalog.blade.php` extends the layout. Filters are a plain
+`<form method="get">` with `<select name="category">`, `<select name="principal">`,
+and `<input name="q">` — no JavaScript required, so the page works with JS
+disabled and stays cacheable. Product cards come from
+`partials/product-card.blade.php`, which Task 10 already created — reuse it, do
+not fork it.
+
+Requirements the original prose left implicit and that the tests depend on:
+
+- **Locale column.** The card renders `$product->getTranslation('name', $locale)`.
+  Spatie's translatable accessor falls back to the fallback locale (`id`) when a
+  key is missing, so the English page must be given products whose `en` key is
+  populated — which the seeder does, and which the test seeds explicitly. Do not
+  add a fallback of your own.
+- **Every UI string is a `ui.*` key** (R14, R23). No literal English or
+  Indonesian in the view. Add to BOTH `lang/id/ui.php` and `lang/en/ui.php`:
+  `ui.catalog.heading`, `ui.catalog.intro`, `ui.catalog.filter_category`,
+  `ui.catalog.filter_principal`, `ui.catalog.filter_all`,
+  `ui.catalog.search_label`, `ui.catalog.search_placeholder`, `ui.catalog.submit`,
+  `ui.catalog.clear`, `ui.catalog.results`, `ui.catalog.empty`, and
+  `ui.pagination.previous` / `ui.pagination.next`.
+  `UiTranslationsTest` asserts exact key parity, so a key added to one file and
+  not the other fails the suite.
+- **The form must preserve the other filters.** Each `<select>` and the search
+  input render their current value from `$activeCategory` / `$activePrincipal` /
+  `$term`, and the form must not drop a filter when another one is submitted.
+- **The search input carries no `pattern` or `maxlength` attribute.** The server
+  does the sanitising (R19); an HTML constraint that claims otherwise would
+  reject a term the server handles fine.
+- **`max-w-shell`** on the container, per DesignSystemTest, and no `max-w-7xl`-class
+  hardcoded width.
+- **Tokens only.** No `text-gray-*`/`bg-white` utilities — DesignSystemTest scans
+  this file for them and fails.
+- **Empty state** uses `ui.catalog.empty`, mirroring the composed empty state on
+  the home page rather than a bare sentence.
+
+- [ ] **Step 6b: Replace the stock paginator view**
+
+`resources/views/vendor/pagination/tailwind.blade.php`, rendering the paginator
+with the project's tokens. Laravel's shipped `pagination::tailwind` view uses
+`text-gray-*`, `bg-white`, `border-gray-*`, and `rounded-md`, all of which
+DesignSystemTest bans and none of which follow the dark-mode token swap. Render
+`$paginator->links()` and, on the first page, nothing.
+
+Register it in `AppServiceProvider::boot()`:
+
+```php
+Paginator::defaultView('pagination::tailwind');
+```
+
+The view must use `ui.pagination.previous` / `ui.pagination.next` for its
+labels rather than Laravel's own `pagination.*` keys, so the aria-labels are
+translated on `/en`. Laravel ships no `lang/en/pagination.php` in this project,
+so the stock labels would render as the raw key.
 
 - [ ] **Step 7: Register the route**
 
+**Replace** the existing `Route::view(...)->name('products.index')` placeholder
+inside the locale loop — do not add a second route with the same name, or the
+last registration wins and the placeholder is served. The loop already branches
+on `$locale`, so:
+
 ```php
-Route::get('/produk', \App\Http\Controllers\CatalogController::class)->name('products.index');
+Route::get($locale === 'en' ? '/products' : '/produk', CatalogController::class)
+    ->name('products.index');
 ```
 
-with the English path `'/products'` in the `en` group. Because the loop shares one closure, branch on `$locale`:
-
-```php
-Route::get($locale === 'en' ? '/products' : '/produk', CatalogController::class)->name('products.index');
-```
+Leave the other five placeholders (`products.show`, `principals.index`,
+`principals.show`, `about`, `contact`) exactly as they are; Tasks 12–15 replace
+them. Removing one now breaks `route()` for the nav and the product card, which
+is why they exist.
 
 - [ ] **Step 8: Run the tests to verify they pass**
 

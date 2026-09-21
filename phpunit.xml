@@ -8,6 +8,12 @@
         <testsuite name="Unit">
             <directory>tests/Unit</directory>
         </testsuite>
+        <!-- Its own suite, not part of Feature: this one commits and truncates
+             instead of wrapping each test in a transaction, because InnoDB
+             FULLTEXT cannot see uncommitted rows. See tests/Pest.php. -->
+        <testsuite name="Catalog">
+            <directory>tests/Catalog</directory>
+        </testsuite>
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
