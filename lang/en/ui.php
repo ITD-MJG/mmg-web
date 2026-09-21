@@ -48,6 +48,11 @@ return [
         'detail' => 'View Details',
     ],
 
+    'carousel' => [
+        'previous' => 'Previous principals',
+        'next' => 'Next principals',
+    ],
+
     'contact' => [
         'address' => 'Address',
         'phone' => 'Phone',

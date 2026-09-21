@@ -48,6 +48,11 @@ return [
         'detail' => 'Lihat Detail',
     ],
 
+    'carousel' => [
+        'previous' => 'Principal sebelumnya',
+        'next' => 'Principal berikutnya',
+    ],
+
     'contact' => [
         'address' => 'Alamat',
         'phone' => 'Telepon',

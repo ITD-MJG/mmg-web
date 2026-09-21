@@ -8,7 +8,7 @@
 
 <footer class="mt-24 border-t border-line bg-surface-muted">
     {{-- Row 1: wordmark + address (left), nav links and contact (right). --}}
-    <div class="mx-auto grid max-w-7xl gap-10 px-4 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
+    <div class="mx-auto grid max-w-shell gap-10 px-4 py-14 md:grid-cols-[1.5fr_1fr_1fr]">
         <div>
             @include('partials.logo', ['height' => 'h-12'])
             @if (filled($address))
@@ -56,7 +56,7 @@
     {{-- Row 2: copyright icon + year - company name. The exact `" - "`
          separator is asserted by tests, so the string is built once here. --}}
     <div class="border-t border-line">
-        <div class="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-5 text-sm text-ink-subtle sm:flex-row sm:items-center sm:justify-between">
+        <div class="mx-auto flex max-w-shell flex-col gap-2 px-4 py-5 text-sm text-ink-subtle sm:flex-row sm:items-center sm:justify-between">
             <p>&copy; {{ now()->year }} - {{ $companyName }}</p>
             <p>{{ __('ui.footer.tagline') }}</p>
         </div>

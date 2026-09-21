@@ -11,7 +11,7 @@
     --}}
     <input type="checkbox" id="nav-toggle" class="peer sr-only">
 
-    <div class="mx-auto grid max-w-7xl grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 md:grid-cols-3">
+    <div class="mx-auto grid max-w-shell grid-cols-[1fr_auto] items-center gap-4 px-4 py-3.5 md:grid-cols-3">
         {{-- Logo (left), or the company name when no logo is configured. --}}
         <a href="{{ route("{$locale}.home") }}" class="justify-self-start">
             @include('partials.logo', ['height' => 'h-9'])

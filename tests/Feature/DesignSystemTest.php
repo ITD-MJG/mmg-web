@@ -129,3 +129,39 @@ it('provides a visible focus style and honours reduced motion', function () {
     expect($css)->toContain(':focus-visible')
         ->toContain('prefers-reduced-motion');
 });
+
+it('sizes every page container from a single shell token', function () {
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    // Tailwind v4 maps `--container-*` to the `max-w-*` utilities, so this one
+    // value is the content width for the whole site.
+    preg_match('/--container-shell:\s*([\d.]+)rem/', $css, $matches);
+    expect($matches)->not->toBeEmpty('No --container-shell token in app.css');
+
+    // The brief is a wide desktop canvas. Below 7xl (80rem) the container is
+    // narrower than the Tailwind default this replaced, which would be a
+    // silent regression back to the cramped layout.
+    expect((float) $matches[1])->toBeGreaterThanOrEqual(80.0);
+
+    $views = [
+        'pages/home.blade.php',
+        'partials/nav.blade.php',
+        'partials/footer.blade.php',
+    ];
+
+    foreach ($views as $relative) {
+        $blade = file_get_contents(resource_path("views/{$relative}"));
+
+        // Header, footer, and page sections must share one container or the
+        // gutters stop lining up down the seams.
+        expect(str_contains($blade, 'max-w-shell'))
+            ->toBeTrue("{$relative} has no max-w-shell container");
+
+        // A hardcoded width would silently re-narrow one section and break
+        // the vertical line the header and footer share. Written as an
+        // explicit boolean for the same reason as the dash check above:
+        // `not->toMatch($pattern, $message)` swallows the message.
+        expect((bool) preg_match('/max-w-(?:7xl|6xl|5xl|4xl)\b/', $blade))
+            ->toBeFalse("{$relative} hardcodes a container width instead of max-w-shell");
+    }
+});

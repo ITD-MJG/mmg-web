@@ -112,7 +112,6 @@
 @theme inline {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
-
     --color-canvas: var(--canvas);
     --color-surface: var(--surface);
     --color-surface-muted: var(--surface-muted);
@@ -134,6 +133,20 @@
     --radius-control: var(--r-control);
 
     --animate-marquee: marquee 30s linear infinite;
+}
+
+/*
+| Layout rhythm, deliberately outside the `inline` block above. That block
+| exists so colour utilities resolve to `var(--token)` and therefore follow the
+| dark-mode override; a width is fixed in both schemes, so inlining it would
+| only add indirection.
+|
+| Every page-level container uses `max-w-shell`, so the content width is set
+| here and nowhere else. Header, footer, and page sections must share one value
+| or the gutters stop lining up across the seams.
+*/
+@theme {
+    --container-shell: 90rem;
 }
 
 /*
@@ -185,6 +198,9 @@
 | The track holds two identical copies of the list, so shifting by half its
 | own width lands copy two exactly where copy one began: the loop is seamless
 | with no gap and no jump.
+|
+| The principal strip was a marquee and then a CSS-only carousel; both are
+| gone, so the keyframes below serve only the facilities strip.
 |
 | `overflow: hidden` lives on the wrapper, not the moving element, so the
 | animation can never widen the page. Pausing on hover and honouring
