@@ -107,12 +107,13 @@ it('sizes the logo frame larger than the previous fixed height', function () {
     expect($footer)->not->toBeEmpty('No <footer> found');
 
     // The frame heights, pinned. These are the enlarged values: the header was
-    // 2.25rem and the footer 3rem, and on a 16:9 frame the height is the mark's
-    // size, so a revert to either is a visible regression. A class name is a
-    // weak thing to assert on, but the alternative is measuring pixels, and
-    // there is no browser in this suite.
-    expect($header[0])->toContain('h-12');
-    expect($footer[0])->toContain('h-16');
+    // 2.25rem, then 3rem, and is now 4rem; the footer was 3rem and is now 5rem.
+    // On a 16:9 frame the height is the mark's size, so a revert to any earlier
+    // value is a visible regression. A class name is a weak thing to assert on,
+    // but the alternative is measuring pixels, and there is no browser in this
+    // suite.
+    expect($header[0])->toContain('h-16');
+    expect($footer[0])->toContain('h-20');
 
     // Every logo frame on the page carries the ratio, header and footer alike.
     // Counting rather than asserting presence catches a call site that was
