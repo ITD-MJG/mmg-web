@@ -108,6 +108,21 @@
        inputs, badges) are 8px. */
     --r-card: 0.75rem;
     --r-control: 0.5rem;
+
+    /*
+    | Rendered height of the sticky header, as a length the fold group can
+    | subtract. The header is `sticky`, not `fixed`, so it keeps its place in
+    | the flow: the first screen's content starts below it, which means the
+    | fold group has to be the viewport *minus this band*, not the viewport.
+    |
+    | 5.8125rem is the header's own arithmetic, not a measurement: `py-3.5`
+    | is 0.875rem top and bottom around a `h-16` (4rem) logo, plus the 1px
+    | bottom border. The nav links are shorter than the logo at every
+    | breakpoint, so this one value holds for both the desktop and the
+    | collapsed mobile header. If the logo height or the header padding
+    | changes, this is the second place to update.
+    */
+    --header-h: 5.8125rem;
 }
 
 /*
@@ -241,6 +256,139 @@
     ::selection {
         background-color: var(--accent);
         color: var(--accent-ink);
+    }
+}
+
+/*
+|--------------------------------------------------------------------------
+| Fold group
+|--------------------------------------------------------------------------
+|
+| The first screen of the home page: hero, facilities strip, and principal
+| register share one box exactly as tall as the viewport, so the three of
+| them are what a visitor sees before scrolling and the sections after them
+| are what scrolling reveals.
+|
+| The box is a two-row grid with a fixed middle row, rather than a column flex
+| container with flex items. That is what makes the three fit: `3fr auto 1.5fr`
+| divides whatever is left after the strip's own height between the hero and
+| the register, so the total is the viewport at every width rather than only at
+| the one width the arithmetic was done for.
+|
+| Grid and not flex, and this was measured rather than assumed. With
+| `display: flex` and `flex: 3 1 0` / `flex: 1.5 1 0`, the free space did not
+| divide at all: at 1440x900 the hero stayed at its 350px content floor while
+| the register took all 164px of the surplus and came out 397px tall, so the
+| register was the larger of the two bands despite the smaller ratio. Explicit
+| `grid-template-rows` on the same box split the same space 497/249, which is
+| the 3:1.5 the numbers ask for. The flex result is the reason the register
+| looked like it had grown rather than shrunk.
+|
+| `min-height` and not `height`. On a short window the hero copy and the
+| register are together taller than the viewport, and a hard height would clip
+| them; as a minimum the group simply grows and the page scrolls, which is the
+| honest behaviour. The `auto` middle row keeps the strip at its own height,
+| and a grid row never renders smaller than its content, so no band is
+| compressed below what it holds.
+|
+| Two declarations for one property on purpose. `svh` is the viewport with
+| mobile browser chrome showing, which is the height a visitor actually has
+| when the page first paints; `vh` on a phone is the taller height with the
+| chrome hidden, so a `100vh` fold would push the principal register under
+| the fold until the address bar retracts. Browsers that do not understand
+| `svh` drop the second declaration and keep the `vh` one.
+*/
+
+.fold {
+    display: grid;
+    /*
+    | `minmax(0, 1fr)` and not the implicit column.
+    |
+    | `grid-template-rows` alone leaves the column implicit, and an implicit
+    | column is `auto` — it sizes to its widest item. The carousel track inside
+    | the register is 28 items wide by design, so the column came out as wide as
+    | the whole strip and the page scrolled sideways by up to 1786px. The `0`
+    | minimum is the other half: `1fr` is `minmax(auto, 1fr)`, and that `auto`
+    | floor is the track's min-content width, which is just as wide. A zero
+    | minimum is what lets the band be the viewport's width instead.
+    */
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 3fr auto 1.5fr;
+    min-height: calc(100vh - var(--header-h));
+    min-height: calc(100svh - var(--header-h));
+}
+
+/*
+| The phone layout: the hero takes the whole first screen.
+|
+| Below `md` the hero alone fills the viewport below the header, and the strip
+| and the register follow it in the scroll. That is a different shape from the
+| desktop, where all three share the first screen, and it is the reason the
+| principal band's padding was invisible before: as a `2fr` row the band was
+| taller than its content, so padding only shrank the box the content was
+| centred in and changed nothing on screen. As an `auto` row the band is its
+| content plus its padding, so the padding is what a visitor sees.
+|
+| `minmax(..., auto)` and not the bare `calc`. A fixed row does not grow, so on
+| a very short phone the hero's copy would spill out of it. The `auto` maximum
+| is "at least a full screen, more if the copy needs it", which is the same
+| floor-not-cap rule the desktop rows follow.
+|
+| `min-height: 0` because the group is no longer one screen: the rows below the
+| hero are meant to extend past the fold, so a minimum height on the group
+| would only be restating the hero's own row.
+*/
+@media (max-width: 767px) {
+    .fold {
+        grid-template-rows: minmax(calc(100vh - var(--header-h)), auto) auto auto;
+        grid-template-rows: minmax(calc(100svh - var(--header-h)), auto) auto auto;
+        min-height: 0;
+    }
+}
+
+/*
+| Short windows, from `md` up only.
+|
+| Above `md` the three bands share the first screen, so below 700px of viewport
+| there is not enough room for the hero's four-line headline at its desktop
+| scale plus the two bands under it: the group exceeds the viewport and the
+| register falls below the fold, which is the one thing the fold group exists
+| to prevent. Trimming the vertical padding on all three bands is enough to
+| bring the common short laptop back inside.
+|
+| Scoped to `min-width: 768px` because the phone no longer has this problem.
+| Below `md` the hero is a full screen on its own and the rest scrolls by
+| design, so there is nothing to fit and no reason to trim the register's
+| padding — the one change a phone visitor would see.
+|
+| Padding and not type size. The headline is the page's one job, and shrinking
+| it is a worse answer than moving the bands closer together. The step-down
+| below `sm` in the view already handles the type; this only closes the gap.
+|
+| `:not(:first-child)` because the hero carries no padding of its own — its
+| padding is on the content block inside it — so a rule that set `padding-block`
+| on every band would have *added* 12px to the hero rather than trimming it,
+| which is the opposite of the point. The hero's own block is trimmed instead,
+| one step from `py-8` to `py-4`.
+|
+| Unlayered, so it wins against the `py-*` utilities without `!important`:
+| Tailwind emits those inside `@layer utilities`, and unlayered styles are
+| resolved after every layer regardless of specificity.
+|
+| It cannot make the group shorter than the bands need. Under about 600px of
+| viewport height on a desktop the hero's own copy is taller than the room left
+| for it, so the group scrolls. That is deliberate: the alternative is shrinking
+| a four-line headline until it no longer reads as the page's headline. The fold
+| group is a promise about the common viewport, not a guarantee at every size.
+*/
+@media (max-height: 700px) and (min-width: 768px) {
+    .fold > section:not(:first-child) {
+        padding-block: 0.75rem;
+    }
+
+    /* The hero's content block, not the hero. See the note above. */
+    .fold > section:first-child > div:last-child {
+        padding-block: 0.5rem;
     }
 }
 

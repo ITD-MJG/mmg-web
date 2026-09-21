@@ -3,70 +3,89 @@
 @section('title', \App\Models\Setting::get('default_meta_title', 'Medquest Mitra Global'))
 
 @section('content')
+    {{-- The fold group: hero, facilities strip, and principal register share
+         one box exactly as tall as the viewport below the header, so the
+         three are what the first screen shows and everything after them is
+         what scrolling reveals. `.fold` owns the height and the division; see
+         the comment on it in `resources/css/app.css`. The closing tag is at
+         the end of the principal section. --}}
+    <div class="fold">
+
     {{-- 1. Hero ------------------------------------------------------------
-         Split composition: the message holds the left column and the
-         photograph the right, so the headline never sits over a busy area of
-         the image. Top padding is capped at `pt-20` so the value proposition
-         and its CTA are both above the fold on a laptop. --}}
-    <section class="border-b border-line">
-        <div class="mx-auto grid max-w-shell items-center gap-10 px-4 pt-20 pb-16 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pt-24 lg:pb-24">
-            <div>
-                <h1 class="text-4xl font-semibold tracking-tight text-ink text-balance lg:text-5xl">
-                    {{ __('ui.hero.heading') }}
-                </h1>
-                <p class="mt-5 max-w-xl text-lg leading-relaxed text-ink-muted">
-                    {{ __('ui.hero.subtext') }}
-                </p>
+         Single-column composition: the photograph runs full-bleed behind the
+         message, under a 50% black scrim so the white type keeps its contrast
+         over the bright areas of the frame.
 
-                <div class="mt-8 flex flex-wrap items-center gap-3">
-                    <a href="{{ route("{$locale}.contact") }}"
-                       class="rounded-control bg-accent px-5 py-3 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-hover">
-                        {{ __('ui.hero.cta') }}
-                    </a>
-                    <a href="{{ route("{$locale}.products.index") }}"
-                       class="rounded-control border border-line-strong px-5 py-3 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted">
-                        {{ __('ui.hero.secondary_cta') }}
-                    </a>
-                </div>
-            </div>
+         The band's share of the fold is the grid's `3fr auto 1.5fr` rows in
+         `resources/css/app.css`, not a class here — the ratio lives in one
+         place, because the rows and the items have to agree and two copies
+         would not.
 
-            {{-- A real <img> rather than a CSS background, so it can carry alt
-                 text and reserve its own space before it arrives.
+         A grid row never renders smaller than its content, which is
+         load-bearing on a short window: the copy is taller than the row the
+         ratio gives it, and the honest answer is for the fold group to grow
+         and the page to scroll rather than for the headline to be clipped.
+         Where there is room, the ratio decides the split; where there is not,
+         the copy does.
 
-                 The photograph is a clinical laboratory, which is the part of
-                 the catalogue the company is least visible in and the part a
-                 procurement lead is most likely to be buying for. Its source,
-                 licence, and the script that produced these files are recorded
-                 in `scripts/build-hero-image.php`.
+         The type and the padding step down below `sm` because a phone has
+         roughly half the height for the same four-line headline, and the
+         desktop scale is what would push the register off a phone's fold. --}}
+    <section class="relative isolate flex items-center border-b border-line bg-ink">
+        {{-- The photograph is still a real <img> rather than a CSS background,
+             so it keeps alt text, srcset selection, and high fetch priority.
+             It is absolutely positioned to fill the section, which is what
+             makes the scrim below it a single flat layer instead of a
+             per-element shadow.
 
-                 Two files behind a `srcset`. The 800 is enough for a phone and
-                 for the image column on a laptop; the 1600 is what a
-                 high-density screen picks up. `src` carries the 1600 so a
-                 browser without `srcset` still gets a full-size image rather
-                 than none.
+             The photograph is a clinical laboratory, which is the part of
+             the catalogue the company is least visible in and the part a
+             procurement lead is most likely to be buying for. Its source,
+             licence, and the script that produced these files are recorded
+             in `scripts/build-hero-image.php`.
 
-                 `sizes` is an estimate of the slot, not a measurement: the
-                 hero is a split grid, so the image column is a fraction of the
-                 container on wide screens and the full width below `lg`. It is
-                 deliberately a little generous, because over-reporting the
-                 slot makes the browser choose the larger file and
-                 under-reporting would have it upscale the smaller one. The
-                 width and height are the file's own, so the slot is reserved
-                 and the headline beside it does not move as the image loads.
+             `sizes` is `100vw` because the image is now the full viewport
+             width at every breakpoint, so the browser can pick between the
+             800 and the 1600 without guessing.
 
-                 No `loading="lazy"`: this is the largest element above the
-                 fold on every visit, and deferring it would delay the one
-                 image that decides the page's perceived speed. --}}
-            <div class="overflow-hidden rounded-card border border-line bg-surface-muted">
-                <img src="{{ asset('images/hero-1600.jpg') }}"
-                     srcset="{{ asset('images/hero-800.jpg') }} 800w, {{ asset('images/hero-1600.jpg') }} 1600w"
-                     sizes="(min-width: 1024px) 46vw, 92vw"
-                     alt="{{ __('ui.hero.image_alt') }}"
-                     width="1600"
-                     height="900"
-                     fetchpriority="high"
-                     decoding="async"
-                     class="h-full w-full object-cover">
+             No `loading="lazy"`: this is the largest element above the fold
+             on every visit, and deferring it would delay the one image that
+             decides the page's perceived speed. --}}
+        <img src="{{ asset('images/hero-1600.jpg') }}"
+             srcset="{{ asset('images/hero-800.jpg') }} 800w, {{ asset('images/hero-1600.jpg') }} 1600w"
+             sizes="100vw"
+             alt="{{ __('ui.hero.image_alt') }}"
+             width="1600"
+             height="900"
+             fetchpriority="high"
+             decoding="async"
+             class="absolute inset-0 -z-20 h-full w-full object-cover">
+
+        <div class="absolute inset-0 -z-10 bg-black/50" aria-hidden="true"></div>
+
+        <div class="mx-auto w-full max-w-shell px-4 py-8 sm:py-12">
+            <h1 class="max-w-3xl text-3xl font-semibold tracking-tight text-white text-balance sm:text-4xl lg:text-5xl">
+                {{ __('ui.hero.heading') }}
+            </h1>
+            <p class="mt-4 max-w-xl text-sm leading-relaxed text-white/85 sm:mt-5 sm:text-lg">
+                {{ __('ui.hero.subtext') }}
+            </p>
+
+            <div class="mt-6 flex flex-wrap items-center gap-3 sm:mt-8">
+                {{-- `px-4` below `sm` rather than `px-5`: the pair is 295px wide
+                     at the desktop padding and the content box is 287px on a
+                     375px phone, so the second button wrapped onto its own row.
+                     That row cost 56px of the hero's height, which is the
+                     difference between the principal register sitting on the
+                     fold and falling under it. --}}
+                <a href="{{ route("{$locale}.contact") }}"
+                   class="rounded-control bg-accent px-4 py-3 text-sm font-semibold text-accent-ink transition-colors hover:bg-accent-hover sm:px-5">
+                    {{ __('ui.hero.cta') }}
+                </a>
+                <a href="{{ route("{$locale}.products.index") }}"
+                   class="rounded-control border border-white/40 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/10 sm:px-5">
+                    {{ __('ui.hero.secondary_cta') }}
+                </a>
             </div>
         </div>
     </section>
@@ -74,7 +93,12 @@
     {{-- 2. Facilities marquee -----------------------------------------------
          Breadth without weight: these are the facility types the company
          serves, and a marquee reads them as a category signal rather than a
-         list to be studied. --}}
+         list to be studied.
+
+         A fixed-height band in the fold group: it is one line of small type,
+         so it takes the height it needs and the two big bands divide the
+         rest. `shrink-0` keeps it from being squeezed to nothing when the
+         viewport is short. --}}
     @if (filled($facilities))
         <section class="border-b border-line bg-surface py-5" aria-label="{{ __('ui.sections.facilities') }}">
             <div class="marquee overflow-hidden">
@@ -144,6 +168,13 @@
          column count is unchanged, so the extra size comes out of the slack the
          row used to leave inside each track rather than out of the row's width.
 
+         The caps were raised again, to 144px on a phone up to 208px on a wide
+         screen, when the arrows were shrunk to `p-2` and a 20px icon. Two
+         columns of marks on a phone were the smallest thing on the page: at
+         112px the frame was narrower than the gap between two of them, so the
+         register read as a row of specks. The smaller controls hand the row
+         back 20px, and the rest comes out of the same slack as before.
+
          The register then slides: one page travels across, and the next holds
          long enough to be read. `app.js` clips the strip to a single row and
          moves it by a transform, which is why the track sits inside a viewport
@@ -157,13 +188,45 @@
          that is already there, and nothing moves for someone who asked it not
          to. With no JavaScript the strip is the plain wall it always was. --}}
     @if ($principals->isNotEmpty())
-        <section class="border-b border-line py-10" aria-label="{{ __('ui.sections.principal') }}">
-            <div class="mx-auto max-w-shell px-4">
-                <p class="text-center text-xs font-semibold tracking-wide text-ink-subtle uppercase">
-                    {{ __('ui.sections.principal') }}
-                </p>
+        {{-- Named by the heading rather than by `aria-label`. The visible title
+             used to be a `<p>`, which is a label but not a heading, so the
+             section had to carry a duplicate `aria-label` to name itself. Now
+             that the title is an `<h2>`, `aria-labelledby` points the region
+             at it: one string in one place, and the register appears in the
+             page's heading outline where a visitor navigating by heading would
+             look for it. --}}
+        {{-- The band's share of the fold is the grid's `3fr auto 1.5fr` rows in
+             `resources/css/app.css`, not a class here: the two big bands are
+             grid items, and the ratio has to be decided in one place or the
+             rows and the items disagree.
 
-                <div class="mt-8" data-carousel>
+             Vertical padding below `md` only. On a phone the title and the row
+             of marks are the whole band and they were sitting flush against the
+             strip above and the section below, so the band had no breathing
+             room of its own. From `md` up the grid row is tall enough that the
+             centring already does that job, and padding there would only add
+             height the fold has to absorb. --}}
+        <section class="flex flex-col justify-center border-b border-line py-8 md:py-0" aria-labelledby="principal-heading">
+            <div class="mx-auto max-w-shell px-4">
+                {{-- Larger and heavier than the other section headings on
+                     purpose. Products and Contact are `text-2xl`/`text-3xl` at
+                     `font-semibold`; this is a step above both, because the
+                     register is the section whose content is least
+                     self-explanatory — a row of logos with no sentence saying
+                     what they are. It was a 12px uppercase caption before that.
+
+                     A step below that on a phone. The mobile band is a third of
+                     the fold rather than the half it was, so a 30px title took a
+                     disproportionate share of it; `text-2xl` there keeps the
+                     hierarchy over Products — which is also `text-2xl` below
+                     `lg` — through weight alone, and the size returns at `md`.
+                     The padding and the smaller title are the same trade: give
+                     the band room without spending the fold on it. --}}
+                <h2 id="principal-heading" class="text-center text-2xl font-bold tracking-tight text-ink md:text-3xl lg:text-4xl">
+                    {{ __('ui.sections.principal') }}
+                </h2>
+
+                <div class="mt-6" data-carousel>
                     <div class="flex items-center gap-2 sm:gap-4">
                         {{-- The arrows are real buttons, not labels bound to an
                              input. Paging now needs to know the current position
@@ -177,12 +240,29 @@
                              no-JavaScript visitor is not shown two dead
                              controls. `app.js` reveals them once it has paged
                              the list. --}}
+                        {{-- `max-md:hidden`: on a phone the strip pages on its
+                             own, and two controls either side of a two-column
+                             row were taking 96px of the width the marks need —
+                             a third of the row, for navigation the visitor can
+                             also get by waiting. From `md` up there is room for
+                             both the arrows and the register, so they return.
+
+                             The class and the `hidden` attribute do not
+                             conflict. Below `md` the class is `display: none`
+                             and wins on its own; at `md` and above the class
+                             stops applying and `app.js` is the only thing
+                             deciding, which is what `reflect()` already does.
+                             A `md:block` would have been wrong here: an author
+                             `display` utility outranks the `[hidden]` rule, so
+                             it would have pinned both arrows open at every
+                             width and made `reflect()` unable to disable
+                             them. --}}
                         <button type="button"
                                 data-carousel-prev
                                 hidden
-                                class="shrink-0 rounded-control border border-line p-2.5 text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+                                class="max-md:hidden shrink-0 rounded-control border border-line p-2 text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:pointer-events-none disabled:opacity-40"
                                 aria-label="{{ __('ui.carousel.previous') }}">
-                            <svg class="h-6 w-6" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"
                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M12.5 15L7.5 10l5-5"/>
                             </svg>
@@ -222,7 +302,7 @@
                                              `app.js` lays them out in one row and hands each
                                              one the width the class would have given it. --}}
                                         <li data-carousel-item
-                                            class="grid aspect-square w-full max-w-28 place-items-center sm:max-w-32 md:max-w-36 lg:max-w-40 xl:max-w-44">
+                                            class="grid aspect-square w-full max-w-36 place-items-center sm:max-w-40 md:max-w-44 lg:max-w-48 xl:max-w-52">
                                             @if ($principal->logoUrl())
                                                 {{-- Intrinsic `width`/`height` are the file's own
                                                      dimensions (512x512, set by the normaliser),
@@ -249,9 +329,9 @@
                         <button type="button"
                                 data-carousel-next
                                 hidden
-                                class="shrink-0 rounded-control border border-line p-2.5 text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:pointer-events-none disabled:opacity-40"
+                                class="max-md:hidden shrink-0 rounded-control border border-line p-2 text-ink-muted transition-colors hover:border-line-strong hover:text-ink disabled:pointer-events-none disabled:opacity-40"
                                 aria-label="{{ __('ui.carousel.next') }}">
-                            <svg class="h-6 w-6" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.75"
                                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                 <path d="M7.5 5l5 5-5 5"/>
                             </svg>
@@ -262,6 +342,8 @@
             </div>
         </section>
     @endif
+
+    </div>{{-- /.fold --}}
 
     {{-- 4. Products: grid 3x2 + full-width CTA ----------------------------- --}}
     <section class="border-t border-line bg-surface py-16 lg:py-20" aria-labelledby="products-heading">

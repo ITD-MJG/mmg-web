@@ -39,8 +39,19 @@ const CAROUSEL_SELECTOR = '[data-carousel]';
 // moves. The hold is long enough to read a page of marks and short enough that
 // the register does not read as abandoned; the travel is slower than a control
 // transition because the whole row is moving at once rather than one control.
-const SLIDE_DURATION = 620;
-const AUTOPLAY_DELAY = 4500;
+//
+// Both were raised from 620ms and 4500ms. The register is the only thing on the
+// page that moves, and it was moving often enough to read as an interruption:
+// a visitor looking at the products below it caught the strip out of the corner
+// of their eye every four and a half seconds. A slower travel and a longer hold
+// make it read as a slide that happens to be there rather than as a loop that
+// is asking to be watched.
+//
+// The hold is the one that matters for calm; the travel is what stops the move
+// itself being the thing that catches the eye. Raising the hold alone would
+// leave the same snatch of motion, just less often.
+const SLIDE_DURATION = 900;
+const AUTOPLAY_DELAY = 7000;
 const SLIDE_EASING = 'cubic-bezier(0.22, 0.61, 0.36, 1)';
 
 // Motion is optional. A visitor who has asked the system for less of it gets a
@@ -420,6 +431,27 @@ function createCarousel(root) {
     });
 
     sync();
+
+    // And once more after the browser has finished the current layout pass.
+    //
+    // The first `sync` runs while the document is still being parsed, and
+    // `clientWidth` at that moment is not the width the element ends up with:
+    // on a 390px phone the viewport measured 192px instead of 300px, so the
+    // column width came out 56px instead of 88px and the first page showed
+    // four specks until something forced a resize. A `requestAnimationFrame`
+    // callback runs after layout, so the second pass reads the real box. It is
+    // idempotent — `sync` tears the strip down and rebuilds it — and on a page
+    // whose first measurement was already correct it is a no-op.
+    //
+    // The fonts are the other half of it: a webfont that arrives after this
+    // frame changes the width of every mark's name, and with it the grid the
+    // column count is read from. `ready` is the point at which that can no
+    // longer change.
+    requestAnimationFrame(sync);
+
+    if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(sync).catch(() => {});
+    }
 
     return { go, refresh: sync };
 }
