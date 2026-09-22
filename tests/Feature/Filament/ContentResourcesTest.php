@@ -1,13 +1,13 @@
 <?php
 
-use App\Filament\Resources\Categories\Pages\CreateCategory;
-use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Pages\Pages\CreatePage;
 use App\Filament\Resources\Principals\Pages\CreatePrincipal;
 use App\Filament\Resources\Principals\Pages\EditPrincipal;
-use App\Models\Category;
+use App\Filament\Resources\ProductCategories\Pages\CreateProductCategory;
+use App\Filament\Resources\ProductCategories\Pages\EditProductCategory;
 use App\Models\Page;
 use App\Models\Principal;
+use App\Models\ProductCategory;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
 use Filament\Forms\Components\FileUpload;
@@ -24,7 +24,7 @@ beforeEach(function () {
 });
 
 it('creates a category with both locales', function () {
-    Livewire::test(CreateCategory::class)
+    Livewire::test(CreateProductCategory::class)
         // The two locales live in separate tabs, so the fields are nested
         // under the locale key rather than being one flat input.
         ->assertFormFieldExists('name.id')
@@ -39,7 +39,7 @@ it('creates a category with both locales', function () {
         ->call('create')
         ->assertHasNoFormErrors();
 
-    $category = Category::where('slug', 'alat-kesehatan')->first();
+    $category = ProductCategory::where('slug', 'alat-kesehatan')->first();
 
     expect($category)->not->toBeNull()
         ->and($category->getTranslation('name', 'id'))->toBe('Alat Kesehatan')
@@ -48,9 +48,9 @@ it('creates a category with both locales', function () {
 });
 
 it('rejects a category that is its own parent', function () {
-    $category = Category::factory()->create();
+    $category = ProductCategory::factory()->create();
 
-    Livewire::test(EditCategory::class, ['record' => $category->slug])
+    Livewire::test(EditProductCategory::class, ['record' => $category->slug])
         ->fillForm(['parent_id' => $category->id])
         ->call('save')
         ->assertHasFormErrors(['parent_id']);

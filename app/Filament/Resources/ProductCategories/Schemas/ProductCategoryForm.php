@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Filament\Resources\Categories\Schemas;
+namespace App\Filament\Resources\ProductCategories\Schemas;
 
-use App\Models\Category;
+use App\Models\ProductCategory;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -12,7 +12,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
 
-class CategoryForm
+class ProductCategoryForm
 {
     public static function configure(Schema $schema): Schema
     {
@@ -44,7 +44,7 @@ class CategoryForm
                 Select::make('parent_id')
                     ->label('Induk')
                     ->relationship('parent', 'slug')
-                    ->getOptionLabelFromRecordUsing(fn (Category $record): string => $record->name)
+                    ->getOptionLabelFromRecordUsing(fn (ProductCategory $record): string => $record->name)
                     ->searchable()
                     ->preload()
                     ->default(null)
@@ -64,7 +64,7 @@ class CategoryForm
                 FileUpload::make('image')
                     ->label('Gambar')
                     ->image()
-                    ->directory('categories'),
+                    ->directory('product-categories'),
 
                 TextInput::make('sort_order')
                     ->label('Urutan')

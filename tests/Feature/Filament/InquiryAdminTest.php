@@ -110,8 +110,14 @@ it('renders the notification for an inquiry with no product', function () {
 
     $html = (new InquiryReceived($inquiry))->render();
 
-    expect($html)->toContain($inquiry->name);
-    expect($html)->toContain($inquiry->email);
+    // Asserted against the escaped form, because the mail view renders through
+    // Blade and escapes. Asserting the raw name passed only while the generated
+    // name happened to contain no apostrophe: faker produces one in about 1.6%
+    // of names, so this failed roughly once in sixty full-suite runs and never
+    // in isolation. That made the suite intermittently red for a reason no
+    // single-file run could reproduce.
+    expect($html)->toContain(e($inquiry->name));
+    expect($html)->toContain(e($inquiry->email));
 });
 
 it('counts new inquiries on the dashboard widget', function () {

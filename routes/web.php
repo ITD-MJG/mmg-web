@@ -1,7 +1,7 @@
 <?php
 
-use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\ProductController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -33,7 +33,7 @@ foreach (config('app.locales') as $locale => $prefix) {
             // handler and view change when the real routes arrive.
             //
             // `products.index` is real from Task 11 and no longer a placeholder.
-            Route::get($locale === 'en' ? '/products' : '/produk', CatalogController::class)
+            Route::get($locale === 'en' ? '/products' : '/produk', ProductController::class)
                 ->name('products.index');
             Route::view($locale === 'en' ? '/products/{slug}' : '/produk/{slug}', 'pages.placeholder')
                 ->name('products.show');

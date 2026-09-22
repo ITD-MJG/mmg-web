@@ -16,6 +16,8 @@ class DatabaseSeeder extends Seeder
             FirstAdminSeeder::class,
             SettingsSeeder::class,
             PrincipalSeeder::class,
+            ProductCategorySeeder::class,
+            TagSeeder::class,
         ]);
     }
 }

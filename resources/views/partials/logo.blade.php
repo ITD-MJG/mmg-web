@@ -56,7 +56,7 @@
              alt="{{ $companyName }}"
              width="903"
              height="864"
-             class="h-full w-full object-contain dark:rounded-sm dark:bg-logo-plate dark:p-1">
+             class="site-logo h-full w-full object-contain dark:rounded-sm dark:bg-logo-plate dark:p-1">
     </span>
 @else
     <span class="text-xl font-semibold tracking-tight text-ink">{{ $companyName }}</span>

@@ -1,5 +1,58 @@
 /*
 |--------------------------------------------------------------------------
+| Header state
+|--------------------------------------------------------------------------
+|
+| The header is transparent over the top of the page and solid once the page
+| has scrolled. The markup ships `data-scrolled="false"`, which is the state a
+| page loaded at the top is already in, so this only has to notice the change.
+|
+| A scroll listener rather than an `IntersectionObserver` on a sentinel. The
+| observer is the tidier mechanism, but it answers "is the sentinel visible",
+| and the question here is "has the page moved at all" — a threshold of one
+| pixel is a scroll listener with more moving parts, and the sentinel would
+| have to be a real element in the markup that exists only to be watched.
+|
+| The handler reads `scrollY` and writes the attribute only when it changes.
+| `scroll` fires on every frame of a scroll, and an unconditional write would
+| be a DOM mutation per frame for a value that changes twice per page.
+|
+| There is no `passive` question to settle: the listener never calls
+| `preventDefault`, so it is registered passive and the browser is free to
+| scroll without waiting for it.
+*/
+
+function createHeader() {
+    const header = document.querySelector('[data-site-header]');
+
+    if (!header) {
+        return null;
+    }
+
+    let scrolled = header.getAttribute('data-scrolled') === 'true';
+
+    function sync() {
+        const next = window.scrollY > 0;
+
+        if (next === scrolled) {
+            return;
+        }
+
+        scrolled = next;
+        header.setAttribute('data-scrolled', next ? 'true' : 'false');
+    }
+
+    window.addEventListener('scroll', sync, { passive: true });
+
+    // Once on the way in. A reload partway down the page paints the transparent
+    // state for one frame, and this is what corrects it.
+    sync();
+
+    return { refresh: sync };
+}
+
+/*
+|--------------------------------------------------------------------------
 | Principal carousel
 |--------------------------------------------------------------------------
 |
@@ -457,7 +510,9 @@ function createCarousel(root) {
 }
 
 const carousels = Array.from(document.querySelectorAll(CAROUSEL_SELECTOR)).map(createCarousel);
+const header = createHeader();
 
 // Exposed so a manual pass can drive the carousel without reaching into the DOM
 // for state. Nothing in the application reads this.
 window.principalCarousels = carousels;
+window.siteHeader = header;

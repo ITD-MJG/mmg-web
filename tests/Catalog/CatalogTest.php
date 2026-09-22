@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Category;
 use App\Models\Principal;
 use App\Models\Product;
+use App\Models\ProductCategory;
 
 /*
 |--------------------------------------------------------------------------
@@ -40,11 +40,11 @@ it('lists only published products', function () {
 });
 
 it('filters by category', function () {
-    $a = Category::factory()->create(['name' => ['id' => 'Kategori A', 'en' => 'Category A']]);
-    $b = Category::factory()->create(['name' => ['id' => 'Kategori B', 'en' => 'Category B']]);
+    $a = ProductCategory::factory()->create(['name' => ['id' => 'Kategori A', 'en' => 'Category A']]);
+    $b = ProductCategory::factory()->create(['name' => ['id' => 'Kategori B', 'en' => 'Category B']]);
 
-    Product::factory()->for($a)->create(['name' => ['id' => 'Produk A', 'en' => 'Product A']]);
-    Product::factory()->for($b)->create(['name' => ['id' => 'Produk B', 'en' => 'Product B']]);
+    Product::factory()->for($a, 'category')->create(['name' => ['id' => 'Produk A', 'en' => 'Product A']]);
+    Product::factory()->for($b, 'category')->create(['name' => ['id' => 'Produk B', 'en' => 'Product B']]);
 
     // Positive control: without it this test passed on an error page.
     $this->get('/produk')
@@ -135,9 +135,9 @@ it('serves the english catalog under /en/products', function () {
 });
 
 it('paginates the catalog and keeps the filters in the page links', function () {
-    $category = Category::factory()->create(['name' => ['id' => 'Kategori A', 'en' => 'Category A']]);
+    $category = ProductCategory::factory()->create(['name' => ['id' => 'Kategori A', 'en' => 'Category A']]);
 
-    Product::factory()->count(25)->for($category)->create([
+    Product::factory()->count(25)->for($category, 'category')->create([
         'name' => ['id' => 'Produk Halaman', 'en' => 'Paged Product'],
     ]);
 
@@ -210,8 +210,8 @@ it('offers only published categories and principals as filters', function () {
     // excluding unpublished rows from the grid says nothing about them. A
     // hidden category appearing in the filter would both leak the name and
     // offer a filter that can only ever return an empty grid.
-    Category::factory()->create(['name' => ['id' => 'Kategori Terbit', 'en' => 'Published Category']]);
-    Category::factory()->unpublished()->create(['name' => ['id' => 'Kategori Tersembunyi', 'en' => 'Hidden Category']]);
+    ProductCategory::factory()->create(['name' => ['id' => 'Kategori Terbit', 'en' => 'Published Category']]);
+    ProductCategory::factory()->unpublished()->create(['name' => ['id' => 'Kategori Tersembunyi', 'en' => 'Hidden Category']]);
     Principal::factory()->create(['name' => 'Principal Terbit']);
     Principal::factory()->unpublished()->create(['name' => 'Principal Tersembunyi']);
 
@@ -240,4 +240,336 @@ it('keeps the catalog filter chrome translated', function () {
         expect(str_contains($indonesian, $english))
             ->toBeFalse("untranslated catalog chrome on /produk: {$english}");
     }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Sort control
+|--------------------------------------------------------------------------
+|
+| The sort bar sits between the filter form and the grid, so it needs its own
+| form (it carries the active filters as hidden inputs) and the filter form
+| needs a hidden `sort` input in return. Both directions are asserted below,
+| because a control that silently drops the other control's state is the bug
+| this shape invites.
+|
+| Order assertions compare positions of the product names in the rendered
+| HTML rather than inspecting the paginator: the paginator is an
+| implementation detail, and what a visitor sees is the order in the document.
+|
+*/
+
+/** Position of the first occurrence of $needle, or false when absent. */
+function catalogPosition(string $html, string $needle): int|false
+{
+    return strpos($html, $needle);
+}
+
+it('renders a sort control above the product grid', function () {
+    Product::factory()->create(['name' => ['id' => 'Produk Satu', 'en' => 'Product One']]);
+
+    $html = $this->get('/produk')->assertOk()->getContent();
+
+    // Positive control: the grid has to render, or the assertions below would
+    // pass on a page that rendered nothing at all.
+    expect($html)->toContain('Produk Satu');
+
+    expect($html)->toContain('name="sort"');
+    expect($html)->toContain('id="sort-order"');
+
+    // The control sits before the grid, which is what the requirement asks for.
+    expect(catalogPosition($html, 'id="sort-order"'))->toBeLessThan(
+        catalogPosition($html, 'Produk Satu'),
+    );
+});
+
+it('marks the active sort option as selected', function () {
+    Product::factory()->create(['name' => ['id' => 'Produk Satu', 'en' => 'Product One']]);
+
+    $html = $this->get('/produk?sort=name_desc')->assertOk()->getContent();
+
+    preg_match('/<option value="name_desc"[^>]*>/', $html, $match);
+    expect($match)->not->toBeEmpty('name_desc option not rendered');
+    expect($match[0])->toContain('selected');
+});
+
+it('sorts products by name ascending in the active locale', function () {
+    Product::factory()->create(['name' => ['id' => 'Charlie', 'en' => 'Charlie']]);
+    Product::factory()->create(['name' => ['id' => 'Alpha', 'en' => 'Alpha']]);
+    Product::factory()->create(['name' => ['id' => 'Bravo', 'en' => 'Bravo']]);
+
+    $html = $this->get('/produk?sort=name_asc')->assertOk()->getContent();
+
+    $alpha = catalogPosition($html, 'Alpha');
+    $bravo = catalogPosition($html, 'Bravo');
+    $charlie = catalogPosition($html, 'Charlie');
+
+    expect($alpha)->not->toBeFalse()
+        ->and($bravo)->not->toBeFalse()
+        ->and($charlie)->not->toBeFalse();
+
+    expect($alpha)->toBeLessThan($bravo);
+    expect($bravo)->toBeLessThan($charlie);
+});
+
+it('sorts products by name descending', function () {
+    Product::factory()->create(['name' => ['id' => 'Charlie', 'en' => 'Charlie']]);
+    Product::factory()->create(['name' => ['id' => 'Alpha', 'en' => 'Alpha']]);
+    Product::factory()->create(['name' => ['id' => 'Bravo', 'en' => 'Bravo']]);
+
+    $html = $this->get('/produk?sort=name_desc')->assertOk()->getContent();
+
+    expect(catalogPosition($html, 'Charlie'))->toBeLessThan(catalogPosition($html, 'Bravo'));
+    expect(catalogPosition($html, 'Bravo'))->toBeLessThan(catalogPosition($html, 'Alpha'));
+});
+
+it('sorts products newest first', function () {
+    // created_at is second-precision, so the two rows are given distinct
+    // explicit timestamps rather than relying on insertion order.
+    //
+    // The new product is inserted FIRST, so the default order (id desc) would
+    // put the old one on top. Without that, this test passed against the
+    // unimplemented controller because insertion order and recency happened to
+    // agree.
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Baru', 'en' => 'New Product'],
+        'created_at' => now(),
+    ]);
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Lama', 'en' => 'Old Product'],
+        'created_at' => now()->subDays(2),
+    ]);
+
+    $html = $this->get('/produk?sort=newest')->assertOk()->getContent();
+
+    expect(catalogPosition($html, 'Produk Baru'))->toBeLessThan(catalogPosition($html, 'Produk Lama'));
+});
+
+it('sorts products oldest first', function () {
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Lama', 'en' => 'Old Product'],
+        'created_at' => now()->subDays(2),
+    ]);
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Baru', 'en' => 'New Product'],
+        'created_at' => now(),
+    ]);
+
+    $html = $this->get('/produk?sort=oldest')->assertOk()->getContent();
+
+    expect(catalogPosition($html, 'Produk Lama'))->toBeLessThan(catalogPosition($html, 'Produk Baru'));
+});
+
+it('ignores an unrecognised sort value', function () {
+    // A whitelist, not a passthrough: an unknown value must fall back to the
+    // default order rather than reaching the query builder, where it would be
+    // a column name chosen by the visitor.
+    //
+    // The fixture is ordered so the default order (id desc) is the reverse of
+    // name order, which is what an unsanitised `orderBy($request->sort)` would
+    // produce for `sort=name_asc`. Falling back to the default is therefore
+    // observable rather than coincidental.
+    Product::factory()->create(['name' => ['id' => 'Alpha', 'en' => 'Alpha']]);
+    Product::factory()->create(['name' => ['id' => 'Bravo', 'en' => 'Bravo']]);
+
+    // `id` is a real column and `SORT_ORDER` is a real column name in caps:
+    // both are exactly the values a passthrough would happily order by, so the
+    // whitelist is what keeps them out.
+    foreach (['id', 'name; DROP TABLE products', '', 'SORT_ORDER'] as $sort) {
+        $html = $this->get('/produk?sort='.urlencode($sort))->assertOk()->getContent();
+
+        // Default order is id desc, so Bravo comes first.
+        expect(catalogPosition($html, 'Bravo'))->toBeLessThan(catalogPosition($html, 'Alpha'));
+    }
+});
+
+it('keeps the sort in the pagination links', function () {
+    // 25 rows is two pages at 24 per page. The timestamps are spread so the
+    // newest product is on page one and the oldest is pushed onto page two:
+    // that makes the assertion about which product is visible, not merely
+    // about the query string surviving, which withQueryString() does on its
+    // own.
+    Product::factory()->count(24)->create([
+        'name' => ['id' => 'Produk Tengah', 'en' => 'Middle Product'],
+        'created_at' => now()->subDay(),
+    ]);
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Terbaru', 'en' => 'Newest Product'],
+        'created_at' => now(),
+    ]);
+    Product::factory()->create([
+        'name' => ['id' => 'Produk Tertua', 'en' => 'Oldest Product'],
+        'created_at' => now()->subDays(30),
+    ]);
+
+    $first = $this->get('/produk?sort=newest')->assertOk();
+    $first->assertSee('page=2');
+    $first->assertSee('sort=newest');
+    $first->assertSee('Produk Terbaru');
+    $first->assertDontSee('Produk Tertua');
+
+    $second = $this->get('/produk?sort=newest&page=2')->assertOk();
+    $second->assertSee('Produk Tertua');
+});
+
+it('puts the sort control in the same form as the filters', function () {
+    // One form, one Apply button. The alternative (a second form for the sort)
+    // would have to re-post every filter as a hidden input and would need a
+    // second submit, which is two places for the filter state to go wrong.
+    // Co-location is the invariant that makes state loss impossible, so it is
+    // what the test pins rather than the hidden-input plumbing that a
+    // separate form would need.
+    Product::factory()->create(['name' => ['id' => 'Produk Satu', 'en' => 'Product One']]);
+
+    $html = $this->get('/produk?sort=newest')->assertOk()->getContent();
+
+    preg_match('#<form\b.*?</form>#s', $html, $form);
+    expect($form)->not->toBeEmpty('no filter form found');
+
+    expect($form[0])->toContain('id="sort-order"')
+        ->toContain('value="newest"');
+
+    // Exactly one form on the page: a second one is the shape this replaced.
+    expect(substr_count($html, '<form'))->toBe(1);
+});
+
+it('keeps the sort chrome translated', function () {
+    Product::factory()->create(['name' => ['id' => 'Produk Satu', 'en' => 'Product One']]);
+
+    $indonesian = $this->get('/produk')->assertOk()->getContent();
+
+    expect($indonesian)->toContain('Urutkan');
+
+    foreach (['Newest', 'Oldest', 'Name A-Z', 'Name Z-A'] as $english) {
+        expect(str_contains($indonesian, $english))
+            ->toBeFalse("untranslated sort chrome on /produk: {$english}");
+    }
+});
+
+/*
+|--------------------------------------------------------------------------
+| Progressive enhancement (Alpine)
+|--------------------------------------------------------------------------
+|
+| The catalog keeps the server as the authority for filtering, sorting, and
+| paging. Alpine only removes the full page reload: it intercepts the form
+| submit, fetches the same URL, and swaps the results region in place.
+|
+| That shape is deliberate. Filtering or sorting only the rows already on the
+| page would be wrong rather than merely slower, because the catalog paginates
+| at 24: "name A-Z" over the current page is not "name A-Z" over the catalog,
+| and a client-side filter silently hides every match on page 2. The server
+| keeps the query, the client keeps the URL in step.
+|
+| These tests therefore assert the two halves separately: the markup must be
+| complete and functional with no JavaScript at all, and the script must carry
+| the enhancement. That is the same split the principal carousel uses.
+|
+*/
+
+it('ships a complete catalog that works with no JavaScript', function () {
+    // Every product is rendered server-side, so a visitor without JavaScript
+    // gets the full grid rather than a shell the script was meant to fill.
+    // The enhancement must never be load-bearing.
+    $products = Product::factory()->count(5)->create([
+        'name' => ['id' => 'Produk Lengkap', 'en' => 'Complete Product'],
+    ]);
+
+    $html = $this->get('/produk')->assertOk()->getContent();
+
+    expect(substr_count($html, 'Produk Lengkap'))->toBe(5, 'every product must render server-side');
+
+    // A real form with a real submit, not a scripted control: with JavaScript
+    // off this is what applies the filters, and it must stay that way.
+    expect($html)->toContain('<form')
+        ->toContain('method="get"')
+        ->toContain('type="submit"');
+
+    // A real select, not a styled button that only a script can drive.
+    expect($html)->toContain('<select id="sort-order"');
+});
+
+it('marks the results region the enhancement swaps', function () {
+    // The script needs one element that contains the result count, the grid,
+    // and the pagination, so a single swap keeps all three in agreement. If the
+    // count lived outside the swapped region it would go stale on every filter.
+    Product::factory()->create(['name' => ['id' => 'Produk Satu', 'en' => 'Product One']]);
+
+    $html = $this->get('/produk')->assertOk()->getContent();
+
+    expect($html)->toContain('data-catalog-results')
+        ->toContain('data-catalog-form');
+
+    // The region is announced when it changes, and marked busy while the fetch
+    // is in flight. Without these a screen reader user gets no signal that the
+    // grid was replaced at all.
+    preg_match('#<[^>]*data-catalog-results[^>]*>#', $html, $region);
+    expect($region)->not->toBeEmpty('results region not found');
+    expect($region[0])->toContain('aria-live="polite"')
+        ->toContain('aria-busy="false"');
+});
+
+it('renders the empty state inside the swapped results region', function () {
+    // The empty state is a different branch of the same region. If it sat
+    // outside it, filtering down to zero results would swap the grid for
+    // nothing and leave the previous products on screen.
+    $html = $this->get('/produk')->assertOk()->getContent();
+
+    expect($html)->toContain('data-catalog-results');
+    expect($html)->toContain(__('ui.catalog.empty'));
+});
+
+it('ships the catalog enhancement in a bundle only the catalog loads', function () {
+    // Alpine is here for the filter swap and nothing else on the public site
+    // uses it. In the shared entry it would ship to every visitor on every page
+    // to pay for one page's enhancement, so it has its own entry that the
+    // catalog view pulls in with `@vite`.
+    $js = file_get_contents(resource_path('js/catalog.js'));
+
+    // Alpine is imported from the bundle rather than a CDN script tag, so the
+    // asset stays in the Vite build and needs no runtime network fetch.
+    expect($js)->toContain("import Alpine from 'alpinejs'")
+        ->toContain('Alpine.start()');
+
+    // The component is registered under the name the view binds with
+    // `x-data`, so the two must agree or the markup is inert.
+    expect($js)->toContain("Alpine.data('catalogResults'");
+
+    $view = file_get_contents(resource_path('views/pages/catalog.blade.php'));
+    expect($view)->toContain('x-data="catalogResults"')
+        ->toContain("@vite('resources/js/catalog.js')");
+
+    // The swap reads the region out of a fetched document, which is what keeps
+    // the server authoritative for the result set.
+    expect($js)->toContain('DOMParser')
+        ->toContain('fetch(')
+        ->toContain('data-catalog-results');
+
+    // The shared entry must stay free of Alpine. Asserted rather than assumed:
+    // a stray import there would silently put it back on every page and no
+    // functional test would notice.
+    $shared = file_get_contents(resource_path('js/app.js'));
+    expect($shared)->not->toContain('alpinejs');
+});
+
+it('does not drive the catalog from an inline handler', function () {
+    // The enhancement attaches its listeners from app.js. An inline `onchange`
+    // would be the only script in a public view, would need `unsafe-inline` in
+    // any future CSP, and would run before the module that owns the logic.
+    $html = $this->get('/produk')->assertOk()->getContent();
+
+    expect($html)->not->toContain('onchange=')
+        ->not->toContain('onsubmit=')
+        ->not->toContain('onclick=');
+});
+
+it('keeps the sort select working when the form is submitted without JavaScript', function () {
+    // The no-JavaScript path is the form itself, so the sort must survive a
+    // real submission and not depend on the script to be sent to the server.
+    Product::factory()->create(['name' => ['id' => 'Alpha', 'en' => 'Alpha']]);
+    Product::factory()->create(['name' => ['id' => 'Bravo', 'en' => 'Bravo']]);
+
+    $html = $this->get('/produk?sort=name_desc')->assertOk()->getContent();
+
+    expect(catalogPosition($html, 'Bravo'))->toBeLessThan(catalogPosition($html, 'Alpha'));
 });

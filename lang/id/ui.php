@@ -30,14 +30,24 @@ return [
     'hero' => [
         'heading' => 'Solusi Alat Kesehatan untuk Fasilitas Kesehatan Anda',
         'subtext' => 'Distributor alat kesehatan terpercaya untuk rumah sakit, klinik, laboratorium, dan apotek di seluruh Indonesia.',
-        'cta' => 'Minta Penawaran',
-        'secondary_cta' => 'Lihat Produk',
+        // The pair the hero's two buttons render. The primary leads to the
+        // company profile and the secondary to the contact page, which is the
+        // reverse of what the labels used to imply; the keys are named for the
+        // position in the layout rather than for the destination, so moving a
+        // destination is one edit here and none in the view.
+        'cta' => 'Tentang Kami',
+        'secondary_cta' => 'Hubungi Kami',
         'image_alt' => 'Alat analisis laboratorium dan seorang teknisi di laboratorium klinik',
     ],
 
     'sections' => [
         'facilities' => 'Jenis Fasilitas Kesehatan',
         'principal' => 'Principal',
+        // Sits under the heading as the sentence that says what the row of
+        // logos below it is. It names the register rather than the company's
+        // own standing: "our current partners" is a claim the visitor can
+        // check by looking, which is the only kind worth making here.
+        'principal_subtext' => 'Didukung oleh principal terkemuka yang menjadi mitra resmi kami saat ini.',
         'products' => 'Produk Terbaru',
         'contact' => 'Hubungi Kami',
     ],
@@ -57,6 +67,12 @@ return [
         'filter_all' => 'Semua',
         'search_label' => 'Cari produk',
         'search_placeholder' => 'Nama produk',
+        'sort_label' => 'Urutkan',
+        'sort_default' => 'Paling Sesuai',
+        'sort_newest' => 'Terbaru',
+        'sort_oldest' => 'Terlama',
+        'sort_name_asc' => 'Nama A-Z',
+        'sort_name_desc' => 'Nama Z-A',
         'submit' => 'Terapkan',
         'clear' => 'Hapus filter',
         'results' => 'Menampilkan :from sampai :to dari :total produk',

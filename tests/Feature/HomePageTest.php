@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\Category;
 use App\Models\Principal;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\Setting;
 
 it('renders the home page in both locales', function () {
@@ -165,13 +165,13 @@ it('frames every principal mark in a square that reserves its space', function (
     expect($section[0])->toContain('dark:bg-logo-plate');
 
     // The frame grows with the grid rather than being pinned to one size: at
-    // two columns on a phone the column is narrower than a `max-w-52` frame, so
+    // two columns on a phone the column is narrower than a `max-w-56` frame, so
     // a single cap would either overflow small screens or waste the space a
-    // wide one has. The caps were raised once the page counter went away, and
-    // again when the arrows were shrunk — the smaller controls hand the row
-    // back 20px, and the caps were set above every column width so the column,
-    // not the cap, is what sizes the mark.
-    foreach (['max-w-36', 'sm:max-w-40', 'md:max-w-44', 'lg:max-w-48', 'xl:max-w-52'] as $utility) {
+    // wide one has. The caps were raised once the page counter went away, again
+    // when the arrows were shrunk, and again when the register stopped using
+    // the text shell and started running at `89vw`: every column is wider now,
+    // and a cap left at the old value would leave the extra width empty.
+    foreach (['max-w-40', 'sm:max-w-44', 'md:max-w-48', 'lg:max-w-52', 'xl:max-w-56'] as $utility) {
         expect($section[0])->toContain($utility);
     }
 });
@@ -446,23 +446,30 @@ it('gives the principal frames a cap above every column width they are used at',
     expect($section)->not->toBeEmpty('No principal carousel found');
 
     // Two columns on a phone is the layout, and the marks have to be readable
-    // inside it. The row is `max-w-shell` (85vw) less `px-4` and the two
-    // arrow columns, so at 390px each column is about 96px; at 1440px each of
-    // the six columns is about 167px. A cap below the column width is what
-    // makes the mark smaller than the cell it sits in, which is what the
-    // previous 112px/176px caps did on a phone.
+    // inside it. The register now runs at `89vw` less `px-4` and the two arrow
+    // columns, so at 390px each column is about 100px and at 1440px each of the
+    // six columns is about 175px. A cap below the column width is what makes
+    // the mark smaller than the cell it sits in.
     //
     // The assertion is on the cap's own value rather than on the rendered size,
     // because the rendered size needs a browser and this suite has none.
-    preg_match('#max-w-36[^\"]*sm:max-w-40[^\"]*md:max-w-44[^\"]*lg:max-w-48[^\"]*xl:max-w-52#', $section[0], $caps);
+    preg_match('#max-w-40[^\"]*sm:max-w-44[^\"]*md:max-w-48[^\"]*lg:max-w-52[^\"]*xl:max-w-56#', $section[0], $caps);
     expect($caps)->not->toBeEmpty('the frame caps are not in ascending order');
 
-    // 9rem, 10rem, 11rem, 12rem, 13rem: 144px up to 208px. Tailwind's `max-w-*`
+    // 10rem, 11rem, 12rem, 13rem, 14rem: 160px up to 224px. Tailwind's `max-w-*`
     // scale is 0.25rem per step, so these are the values the utilities resolve
-    // to and the numbers the comment in the view quotes.
-    foreach ([[36, 144], [40, 160], [44, 176], [48, 192], [52, 208]] as [$step, $px]) {
+    // to and the numbers the comment in the view quotes. The whole ladder is one
+    // step above where it was, which is what the wider register pays for.
+    foreach ([[40, 160], [44, 176], [48, 192], [52, 208], [56, 224]] as [$step, $px]) {
         expect($step * 4)->toBe($px);
     }
+
+    // The register is wider than the text shell on purpose: the shell is sized
+    // for reading, and a row of logos is scanned rather than read. Asserting the
+    // width is what stops the caps above from being raised against a container
+    // that quietly shrank back to `max-w-shell`.
+    expect($section[0])->toContain('max-w-[89vw]')
+        ->not->toContain('max-w-shell');
 });
 
 it('keeps the carousel controls smaller than the marks they page', function () {
@@ -510,37 +517,61 @@ it('hides the carousel arrows on a phone and pages on its own there', function (
         ->toContain('setTimeout');
 });
 
-it('gives the hero the whole first screen on a phone', function () {
+it('makes the hero a full viewport tall and offsets it under the header', function () {
     $css = file_get_contents(resource_path('css/app.css'));
 
-    // Below `md` the hero's row is a full viewport below the header, and the two
-    // bands under it are content-sized. Asserting the media query is scoped to
-    // the phone is the half that matters: unscoped, this would make the hero a
-    // full screen on a desktop too and push the register off the fold there,
-    // which is the thing the fold group exists to prevent.
-    preg_match('#@media \(max-width: 767px\)\s*\{(.*?)\n\}#s', $css, $phone);
-    expect($phone)->not->toBeEmpty('no phone media query found');
+    // A full viewport, and `svh` before `vh`. `svh` is the viewport with the
+    // mobile browser chrome showing, which is the height a visitor actually has
+    // when the page first paints; `vh` on a phone is the taller height with the
+    // chrome hidden, so a `100vh` hero puts its own bottom edge under the fold
+    // until the address bar retracts. Both are declared because a browser that
+    // does not understand `svh` drops the second and keeps the first.
+    preg_match('#\.hero-full\s*\{(.*?)\}#s', $css, $hero);
+    expect($hero)->not->toBeEmpty('no .hero-full rule found');
 
-    expect($phone[1])->toContain('minmax(calc(100svh - var(--header-h)), auto) auto auto')
-        ->toContain('min-height: 0');
+    expect($hero[1])->toContain('min-height: 100vh')
+        ->toContain('min-height: 100svh');
 
-    // `auto` and not `0`. A fixed row does not grow, so a very short phone would
-    // clip the hero's copy rather than scroll it.
-    expect($phone[1])->toContain(', auto)');
+    // The header floats over the hero, so the section has to start at the very
+    // top of the viewport and its copy has to start below the header. Both are
+    // the one `--header-h` token, written together, so the offset cannot drift
+    // from the header's own height the way two independent values would.
+    expect($hero[1])->toContain('margin-top: calc(var(--header-h) * -1)')
+        ->toContain('padding-top: var(--header-h)');
 
-    // The desktop keeps the three-band fold. If the phone rows leaked out of the
-    // query, this would be the assertion that caught it.
-    preg_match('#\.fold\s*\{(.*?)\}#s', $css, $fold);
-    expect($fold[1])->toContain('grid-template-rows: 3fr auto 1.5fr');
+    // `main` has to establish a block formatting context, or that negative
+    // margin collapses through it and moves the whole element instead of the
+    // hero inside it.
+    expect($css)->toContain('display: flow-root');
 
-    // The short-window trim is desktop-only now, because the phone no longer has
-    // three bands to fit on one screen — and that trim is what was overriding
-    // the register's padding on a phone.
-    expect($css)->toContain('@media (max-height: 700px) and (min-width: 768px)');
-    expect($css)->not->toContain('@media (max-height: 700px) {');
+    // And the header itself is what the offset is measured against, so the
+    // token must exist.
+    expect($css)->toContain('--header-h:');
 });
 
-it('gives the principal band less of the fold from tablet up, with padding on a phone', function () {
+it('carries the header offset as one token rather than two numbers', function () {
+    $css = file_get_contents(resource_path('css/app.css'));
+
+    // `--header-h` is the header's own arithmetic, and the hero reads it rather
+    // than repeating it. A hardcoded offset in `.hero-full` would be a second
+    // copy of the header's height, and the two would drift the first time the
+    // logo grew.
+    preg_match('#\.hero-full\s*\{(.*?)\}#s', $css, $hero);
+    expect($hero)->not->toBeEmpty('no .hero-full rule found');
+
+    expect((bool) preg_match('/calc\(\s*[0-9.]+rem\s*\*\s*-1\s*\)/', $hero[1]))
+        ->toBeFalse('the hero hardcodes the header height instead of reading --header-h');
+
+    // The header no longer has to fit in a fraction of the first screen, so the
+    // fold group and its `3fr auto 1.5fr` rows are gone. Asserting their absence
+    // is what stops the ratio coming back: it would silently put the hero back
+    // at two thirds of a viewport and re-clip the register.
+    expect($css)->not->toContain('.fold')
+        ->not->toContain('grid-template-rows: 3fr auto 1.5fr')
+        ->not->toContain('@media (max-height: 700px) and (min-width: 768px)');
+});
+
+it('gives the principal register its own band rather than a share of the fold', function () {
     Principal::factory()->count(6)->create(['is_published' => true]);
 
     $html = $this->get('/')->assertOk()->getContent();
@@ -551,47 +582,83 @@ it('gives the principal band less of the fold from tablet up, with padding on a 
     preg_match('#<section class="([^"]*)"\s+aria-labelledby="principal-heading"#', $html, $sectionClass);
     expect($sectionClass)->not->toBeEmpty('the principal section has no class attribute');
 
-    // A third of the fold from `md` up rather than the two fifths it took for a
-    // band that reads in one glance; the phone keeps its larger share, where
-    // the frames are big enough to be worth the room.
+    // The band is content-sized now, so its own padding is the whole of its
+    // breathing room. It steps up with the viewport rather than being one value
+    // everywhere: the register is the widest row on the page and needs more
+    // separation from the bands above and below it as it grows.
+    expect($sectionClass[1])->toContain('py-14')
+        ->toContain('md:py-20')
+        ->toContain('lg:py-24');
+
+    // A recessed surface rather than the canvas. The section boundary used to be
+    // carried by a single hairline against the same warm near-white the hero
+    // sits on, so the row of marks had nothing to sit on.
+    expect($sectionClass[1])->toContain('bg-surface-muted');
+
+    // The fold group's centring is gone with the fold group: as a `fr` row the
+    // band was taller than its content, so padding only shrank the box the
+    // content was centred in.
+    expect($sectionClass[1])->not->toContain('md:py-0');
+});
+
+it('explains the principal register in a sentence under its heading', function () {
+    Principal::factory()->count(6)->create(['is_published' => true]);
+
+    $html = $this->get('/')->assertOk()->getContent();
+
+    preg_match('#aria-labelledby="principal-heading".*?</section>#s', $html, $section);
+    expect($section)->not->toBeEmpty('No principal carousel found');
+
+    // The heading is a bare noun and the word "principal" is a loanword that not
+    // every visitor will know, so the register is described in a sentence rather
+    // than left to the logos to explain themselves.
     //
-    // The ratio is the grid's `3fr auto 1.5fr` rows, not a class on the section,
-    // so it is asserted in the stylesheet. It has to be the grid: with the flex
-    // version the free space did not divide at all — at 1440x900 the hero stayed
-    // at its content floor while the register took all 164px of the surplus.
-    $css = file_get_contents(resource_path('css/app.css'));
-    preg_match('#\.fold\s*\{(.*?)\}#s', $css, $fold);
-    expect($fold)->not->toBeEmpty('no .fold rule found');
+    // Asserted in both locales because the sentence is the section's only piece
+    // of explanatory copy: an EN key that fell back to Indonesian would read as
+    // a language switch mid-section, which is exactly the failure the key-parity
+    // test cannot see.
+    foreach (['id' => '/', 'en' => '/en'] as $locale => $uri) {
+        $body = $this->get($uri)->assertOk()->getContent();
 
-    expect($fold[1])->toContain('display: grid')
-        ->toContain('grid-template-rows: 3fr auto 1.5fr')
-        ->not->toContain('display: flex');
+        expect($body)->toContain(__('ui.sections.principal_subtext', [], $locale));
 
-    // The phone is a different shape, not the same one with different numbers:
-    // the hero takes the whole first screen and the strip and register follow it
-    // in the scroll. That is what makes the register's padding visible — as a
-    // `fr` row the band was taller than its content, so padding only shrank the
-    // box the content was centred in.
-    //
-    // `minmax(..., auto)` and not a bare `calc`: a fixed row cannot grow, so on
-    // a very short phone the hero's copy would spill out of it.
-    expect($css)->toContain('grid-template-rows: minmax(calc(100vh - var(--header-h)), auto) auto auto')
-        ->toContain('grid-template-rows: minmax(calc(100svh - var(--header-h)), auto) auto auto');
+        // Scoped to the section, so a sentence that rendered elsewhere on the
+        // page would not satisfy it.
+        preg_match('#aria-labelledby="principal-heading".*?</section>#s', $body, $scoped);
+        expect($scoped)->not->toBeEmpty("No principal carousel found on {$uri}");
+        expect($scoped[0])->toContain(e(__('ui.sections.principal_subtext', [], $locale)));
+    }
 
-    expect($css)->not->toContain('grid-template-rows: 3fr auto 2fr');
+    // It sits between the heading and the strip, and it is a paragraph rather
+    // than a second heading: it describes the register, it does not name it.
+    expect($section[0])->toMatch('#<h2 id="principal-heading".*?</h2>\s*<p#s');
+    expect($section[0])->toContain('text-center');
+});
 
-    // Vertical padding below `md` only. On a phone the title and the row were
-    // flush against the strip above and the section below; from `md` up the grid
-    // row is tall enough that the centring does the same job, and padding there
-    // would only add height the fold has to absorb.
-    expect($sectionClass[1])->toContain('py-8')
-        ->toContain('md:py-0');
+it('runs the principal register wider than the text shell', function () {
+    Principal::factory()->count(6)->create(['is_published' => true]);
 
-    // No other vertical padding utilities. `py-8`/`md:py-0` is the whole of it,
-    // so a second one appearing means the two are fighting. The `[\s:]` covers
-    // the responsive prefix: `md:py-0` has a colon in front of it, not a space.
-    expect(preg_match_all('/(?:^|[\s:])(?:py|pt|pb)-/', $sectionClass[1]))
-        ->toBe(2, 'exactly one vertical padding pair, in two halves');
+    $html = $this->get('/')->assertOk()->getContent();
+
+    preg_match('#aria-labelledby="principal-heading".*?</section>#s', $html, $section);
+    expect($section)->not->toBeEmpty('No principal carousel found');
+
+    // The shell is sized for reading a paragraph, and a row of logos is scanned
+    // rather than read. The register is the one band that runs wider than it,
+    // which is what gives every column a wider track and lets the caps above it
+    // grow without the marks floating in empty cells.
+    expect($section[0])->toContain('max-w-[89vw]');
+
+    // `vw` and not `%`: a percentage would resolve against the section and
+    // compound the `px-4` inside it, so the width would depend on how deeply the
+    // container happened to nest.
+    expect((bool) preg_match('/max-w-\[\d+%\]/', $section[0]))
+        ->toBeFalse('the register sizes from a percentage instead of the viewport');
+
+    // The rest of the page still uses the shared shell, or the gutters stop
+    // lining up at the seams.
+    $blade = file_get_contents(resource_path('views/pages/home.blade.php'));
+    expect($blade)->toContain('max-w-shell');
 });
 
 it('renders a real photograph as the hero, with a srcset and reserved space', function () {
@@ -599,7 +666,7 @@ it('renders a real photograph as the hero, with a srcset and reserved space', fu
 
     // Scope to the hero. The product grid also renders images further down, so
     // a page-wide assertion could pass on one of those instead.
-    preg_match('#<section class="[^"]*border-b border-line[^"]*">.*?</section>#s', $html, $matches);
+    preg_match('#<section class="[^"]*hero-full[^"]*">.*?</section>#s', $html, $matches);
     expect($matches)->not->toBeEmpty('No hero section found');
     $hero = $matches[0];
 
@@ -634,7 +701,7 @@ it('renders a real photograph as the hero, with a srcset and reserved space', fu
 it('ships the hero files the view references, at the ratio it declares', function () {
     $html = $this->get('/')->assertOk()->getContent();
 
-    preg_match('#<section class="[^"]*border-b border-line[^"]*">.*?</section>#s', $html, $matches);
+    preg_match('#<section class="[^"]*hero-full[^"]*">.*?</section>#s', $html, $matches);
     expect($matches)->not->toBeEmpty('No hero section found');
 
     // A referenced-but-missing image renders as a broken box, and the markup
@@ -687,7 +754,7 @@ it('renders the footer copyright with the current year and company name', functi
 });
 
 it('does not render a category grid on the home page', function () {
-    Category::factory()->create(['is_published' => true, 'name' => ['id' => 'Kategori Tampil']]);
+    ProductCategory::factory()->create(['is_published' => true, 'name' => ['id' => 'Kategori Tampil']]);
 
     $this->get('/')->assertDontSee('Kategori Tampil');
 });

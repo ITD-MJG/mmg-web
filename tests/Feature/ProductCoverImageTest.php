@@ -4,6 +4,7 @@ use App\Models\Product;
 use App\Models\ProductImage;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 it('lets the last cover created win instead of throwing', function () {
     $product = Product::factory()->create();
@@ -88,4 +89,32 @@ it('does not demote covers belonging to another product', function () {
     ProductImage::create(['product_id' => $b->id, 'path' => 'b.jpg', 'is_cover' => true]);
 
     expect($coverA->fresh()->is_cover)->toBeTrue();
+});
+
+it('resolves a seeded image path as a public asset', function () {
+    $image = ProductImage::create([
+        'product_id' => Product::factory()->create()->id,
+        'path' => 'images/products/tecan-spark.jpg',
+        'is_cover' => true,
+    ]);
+
+    // Seeded paths are public-root-relative, so they resolve with `asset()`
+    // rather than through the `public` disk.
+    expect($image->url())->toBe(asset('images/products/tecan-spark.jpg'));
+});
+
+it('resolves an uploaded image path through the public disk', function () {
+    $image = ProductImage::create([
+        'product_id' => Product::factory()->create()->id,
+        'path' => 'products/uploaded.jpg',
+        'is_cover' => true,
+    ]);
+
+    expect($image->url())->toBe(Storage::disk('public')->url('products/uploaded.jpg'));
+});
+
+it('returns no url when the path is blank', function () {
+    $image = new ProductImage(['path' => null]);
+
+    expect($image->url())->toBeNull();
 });

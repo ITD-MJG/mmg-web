@@ -8,9 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('categories', function (Blueprint $table) {
+        // The catalogue's category table is `product_categories`, not
+        // `categories`. It only ever classifies products, and the explicit name
+        // keeps it distinct from the tag vocabulary beside it. Products reach
+        // it through `products.category_id` below, which is the product's single
+        // primary category.
+        Schema::create('product_categories', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('categories')->nullOnDelete();
+            $table->foreignId('parent_id')->nullable()->constrained('product_categories')->nullOnDelete();
             $table->string('slug')->unique();
             $table->json('name');
             $table->json('description')->nullable();
@@ -38,7 +43,9 @@ return new class extends Migration
 
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+            // `category_id` infers `categories`, which no longer exists, so the
+            // table is named explicitly.
+            $table->foreignId('category_id')->constrained('product_categories')->cascadeOnDelete();
             $table->foreignId('principal_id')->nullable()->constrained()->nullOnDelete();
             $table->string('slug')->unique();
             $table->string('sku')->nullable();
@@ -68,6 +75,33 @@ return new class extends Migration
             $table->index(['product_id', 'sort_order']);
         });
 
+        Schema::create('tags', function (Blueprint $table) {
+            $table->id();
+            $table->string('slug')->unique();
+            $table->json('name');
+            $table->json('description')->nullable();
+            $table->unsignedInteger('sort_order')->default(0);
+            $table->boolean('is_published')->default(false);
+            $table->timestamps();
+
+            $table->index(['is_published', 'sort_order']);
+        });
+
+        // Tags are a free vocabulary a product can carry several of, which is
+        // what separates them from `category_id`: a category is where a product
+        // files, a tag is what it also happens to be (a model family, a
+        // temperature class). The pivot carries only the pair, and the unique
+        // index is what makes attaching the same tag twice a no-op rather than
+        // a duplicate row.
+        Schema::create('product_tags', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
+            $table->timestamps();
+
+            $table->unique(['product_id', 'tag_id']);
+        });
+
         // Exactly one cover image per product, enforced by the database.
         // MySQL/MariaDB have no partial unique indexes, so a stored generated
         // column collapses the cover row to its product_id and leaves gallery
@@ -86,9 +120,11 @@ return new class extends Migration
 
     public function down(): void
     {
+        Schema::dropIfExists('product_tags');
+        Schema::dropIfExists('tags');
         Schema::dropIfExists('product_images');
         Schema::dropIfExists('products');
         Schema::dropIfExists('principals');
-        Schema::dropIfExists('categories');
+        Schema::dropIfExists('product_categories');
     }
 };

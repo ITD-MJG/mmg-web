@@ -8,7 +8,7 @@
      * @var \App\Models\Product $product
      */
     $cover = $product->coverImage();
-    $imageUrl = $cover ? \Illuminate\Support\Facades\Storage::disk('public')->url($cover->path) : null;
+    $imageUrl = $cover?->url();
     $alt = $cover?->getTranslation('alt', $locale) ?: $product->getTranslation('name', $locale);
 
     // 40-60 word excerpt. `Str::words` truncates at a word boundary and only

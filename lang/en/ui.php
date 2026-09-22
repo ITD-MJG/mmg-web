@@ -30,14 +30,18 @@ return [
     'hero' => [
         'heading' => 'Medical Device Solutions for Your Healthcare Facility',
         'subtext' => 'A trusted medical device distributor for hospitals, clinics, laboratories, and pharmacies across Indonesia.',
-        'cta' => 'Request a Quote',
-        'secondary_cta' => 'Browse Products',
+        // See the Indonesian file: the keys name the button's position in the
+        // layout, not its destination.
+        'cta' => 'About Us',
+        'secondary_cta' => 'Contact Us',
         'image_alt' => 'Laboratory analysers and a technician in a clinical laboratory',
     ],
 
     'sections' => [
         'facilities' => 'Healthcare Facility Types',
         'principal' => 'Principal',
+        // See the Indonesian file for what this sentence is doing.
+        'principal_subtext' => 'Backed by the leading principals who are our current official partners.',
         'products' => 'Latest Products',
         'contact' => 'Contact Us',
     ],
@@ -57,6 +61,12 @@ return [
         'filter_all' => 'All',
         'search_label' => 'Search products',
         'search_placeholder' => 'Product name',
+        'sort_label' => 'Sort by',
+        'sort_default' => 'Relevance',
+        'sort_newest' => 'Newest',
+        'sort_oldest' => 'Oldest',
+        'sort_name_asc' => 'Name A-Z',
+        'sort_name_desc' => 'Name Z-A',
         'submit' => 'Apply',
         'clear' => 'Clear filters',
         'results' => 'Showing :from to :to of :total products',

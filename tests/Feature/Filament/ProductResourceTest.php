@@ -4,8 +4,8 @@ use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\Products\RelationManagers\ImagesRelationManager;
-use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\ProductImage;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
@@ -30,7 +30,7 @@ it('creates a product with both locales populated', function () {
                 'id' => str_repeat('kata ', 45),
                 'en' => str_repeat('word ', 45),
             ],
-            'category_id' => Category::factory()->create()->id,
+            'category_id' => ProductCategory::factory()->create()->id,
             'is_published' => true,
         ])
         ->call('create')
@@ -49,7 +49,7 @@ it('stores the specs repeater as a key-value object', function () {
         ->fillForm([
             'slug' => 'spec-product',
             'name' => ['id' => 'Produk Spesifikasi', 'en' => 'Spec Product'],
-            'category_id' => Category::factory()->create()->id,
+            'category_id' => ProductCategory::factory()->create()->id,
             'specs' => [
                 ['key' => 'Ukuran', 'value' => '10x15cm'],
                 ['key' => 'Berat', 'value' => '2kg'],

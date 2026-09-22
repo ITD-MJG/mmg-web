@@ -9,12 +9,22 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Translatable\HasTranslations;
 
-class Category extends Model
+/**
+ * Where a product files in the catalogue.
+ *
+ * Named for what it classifies rather than for "category" in the abstract,
+ * which keeps it apart from the tag vocabulary a product also carries. A
+ * product has exactly one of these (`products.category_id`); tags are the
+ * many-to-many beside it.
+ */
+class ProductCategory extends Model
 {
     use HasFactory;
     use HasTranslations;
 
     public array $translatable = ['name', 'description'];
+
+    protected $table = 'product_categories';
 
     protected $fillable = [
         'parent_id', 'slug', 'name', 'description',
@@ -38,7 +48,7 @@ class Category extends Model
 
     public function products(): HasMany
     {
-        return $this->hasMany(Product::class);
+        return $this->hasMany(Product::class, 'category_id');
     }
 
     public function scopePublished(Builder $query): Builder

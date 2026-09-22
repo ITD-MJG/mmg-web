@@ -24,8 +24,20 @@ pest()->extend(TestCase::class)
 // This suite therefore commits and truncates between tests instead. It lives
 // outside `Feature/` because Pest refuses to rebind a test case for a nested
 // directory, and it is registered in phpunit.xml as its own suite.
+//
+// `DatabaseTruncation` only truncates BEFORE each test, so the last test's
+// committed rows are still there when the next suite starts. `Feature` uses
+// `RefreshDatabase`, which skips `migrate:fresh` once `RefreshDatabaseState::
+// $migrated` is true and just opens a transaction over whatever it finds, so
+// those rows become visible to Feature tests that count rows. That is not
+// hypothetical: it is what made `CatalogSchemaTest`'s `published()->count()`
+// assertions fail once this suite's last test seeded a product. Truncating
+// after each test leaves the database empty for whoever runs next.
 pest()->extend(TestCase::class)
     ->use(DatabaseTruncation::class)
+    ->afterEach(function () {
+        $this->truncateDatabaseTables();
+    })
     ->in('Catalog');
 
 /*

@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Category;
 use App\Models\Principal;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
-class CatalogController extends Controller
+class ProductController extends Controller
 {
     /**
      * The generated column each FULLTEXT index covers, keyed by locale.
@@ -26,9 +26,28 @@ class CatalogController extends Controller
      */
     private const MIN_TOKEN = 3;
 
+    /**
+     * The sort keys the catalogue accepts, in the order they appear in the
+     * dropdown.
+     *
+     * A whitelist rather than a passthrough: the value arrives from the query
+     * string, so anything not named here would otherwise be a column name
+     * chosen by the visitor. An unrecognised value falls back to the default
+     * order rather than erroring, so a stale bookmark or a hand-edited URL
+     * still renders a page.
+     */
+    private const SORTS = ['default', 'newest', 'oldest', 'name_asc', 'name_desc'];
+
     public function __invoke(Request $request): View
     {
-        $column = self::NAME_COLUMN[app()->getLocale()] ?? self::NAME_COLUMN['id'];
+        $locale = app()->getLocale();
+        $column = self::NAME_COLUMN[$locale] ?? self::NAME_COLUMN['id'];
+
+        $sort = $request->string('sort')->toString();
+
+        if (! in_array($sort, self::SORTS, true)) {
+            $sort = 'default';
+        }
 
         $products = Product::query()
             ->published()
@@ -42,7 +61,41 @@ class CatalogController extends Controller
                 $column,
                 $request->string('q')->toString(),
             ))
-            ->orderBy('sort_order')
+            ->tap(fn (Builder $query) => $this->applySort($query, $sort, $column))
+            ->paginate(24)
+            ->withQueryString();
+
+        return view('pages.catalog', [
+            'products' => $products,
+            'categories' => ProductCategory::published()->orderBy('sort_order')->orderBy('id')->get(),
+            'principals' => Principal::published()->orderBy('sort_order')->orderBy('id')->get(),
+            'term' => $request->string('q')->toString(),
+            'activeCategory' => $request->string('category')->toString(),
+            'activePrincipal' => $request->string('principal')->toString(),
+            'activeSort' => $sort,
+        ]);
+    }
+
+    /**
+     * Apply the whitelisted sort key.
+     *
+     * Every branch ends with an id tiebreak. The default order needs one for
+     * the reason documented below; the others need one because `created_at` is
+     * second-precision and product names are not unique, so two rows can share
+     * a sort value and MySQL is free to order a tie group differently on each
+     * request, which makes paging across the boundary lose and duplicate rows.
+     *
+     * The name sorts read the locale's generated text column rather than the
+     * JSON, so the database sorts on a real string with the column's
+     * `utf8mb4_unicode_ci` collation instead of comparing JSON blobs.
+     */
+    private function applySort(Builder $query, string $sort, string $column): void
+    {
+        match ($sort) {
+            'newest' => $query->orderByDesc('created_at')->orderByDesc('id'),
+            'oldest' => $query->orderBy('created_at')->orderBy('id'),
+            'name_asc' => $query->orderBy($column)->orderBy('id'),
+            'name_desc' => $query->orderByDesc($column)->orderByDesc('id'),
             // sort_order defaults to 0 on every row and created_at is
             // second-precision, so a catalogue imported in one pass is one
             // large tie group, and the order within it is whatever the
@@ -58,18 +111,8 @@ class CatalogController extends Controller
             // deliberately NOT written: the mutation probe showed it passed
             // with this line removed, so it would have been coverage in name
             // only.
-            ->orderByDesc('id')
-            ->paginate(24)
-            ->withQueryString();
-
-        return view('pages.catalog', [
-            'products' => $products,
-            'categories' => Category::published()->orderBy('sort_order')->orderBy('id')->get(),
-            'principals' => Principal::published()->orderBy('sort_order')->orderBy('id')->get(),
-            'term' => $request->string('q')->toString(),
-            'activeCategory' => $request->string('category')->toString(),
-            'activePrincipal' => $request->string('principal')->toString(),
-        ]);
+            default => $query->orderBy('sort_order')->orderByDesc('id'),
+        };
     }
 
     /**

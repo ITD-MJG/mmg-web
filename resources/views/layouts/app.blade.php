@@ -28,5 +28,9 @@
     <main id="main">@yield('content')</main>
 
     @include('partials.footer')
+
+    {{-- Page-specific scripts. The layout loads the shared entry; a page pushes
+         its own bundle here rather than growing that entry for everyone. --}}
+    @stack('scripts')
 </body>
 </html>

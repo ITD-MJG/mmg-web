@@ -64,6 +64,18 @@ class ProductForm
                     ->getOptionLabelFromRecordUsing(fn ($record): string => $record->name)
                     ->required(),
 
+                // Tags are optional and multiple, unlike the single required
+                // category above. A product with no tags is a valid product, so
+                // the field is not `required()` and the pivot simply stays empty.
+                Select::make('tags')
+                    ->label('Tag')
+                    ->relationship('tags', 'slug')
+                    ->getOptionLabelFromRecordUsing(fn ($record): string => $record->name)
+                    ->multiple()
+                    ->searchable()
+                    ->preload()
+                    ->helperText('Opsional. Beberapa tag boleh dipilih.'),
+
                 Select::make('principal_id')
                     ->label('Merek')
                     ->relationship('principal', 'name')
