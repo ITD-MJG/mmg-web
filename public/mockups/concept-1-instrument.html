@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concept 1 — INSTRUMENT · MMG Redesign Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   CONCEPT 1 — INSTRUMENT
+   The design language of a laboratory instrument datasheet.
+   Square. Hairlines. Monospace readouts. Monochrome + one accent.
+   ============================================================ */
+
+:root{
+  color-scheme: light;
+
+  --canvas:#f6f7f7;
+  --surface:#ffffff;
+  --surface-muted:#eceeef;
+
+  --ink:#0e1214;
+  --ink-muted:#4a5257;
+  --ink-subtle:#6b7378;
+
+  --line:#d9dddf;
+  --line-strong:#b9c0c4;
+
+  --accent:#0d5f66;
+  --accent-hover:#0a4a50;
+  --accent-ink:#ffffff;
+  --accent-soft:#e6f0f1;
+
+  --logo-plate:#ffffff;
+
+  /* Square. The entire concept rests on this. */
+  --r-card:0;
+  --r-control:0;
+
+  --header-h:64px;
+
+  /* Shell width. 85vw on large screens, floored so it stays usable
+     on laptops, capped so line length never runs away on ultrawides. */
+  --shell:min(85vw, 1800px);
+
+  --font-sans:'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--canvas);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:16.5px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{margin:0;font-weight:600;letter-spacing:-0.011em}
+p{margin:0}
+ul{margin:0;padding:0;list-style:none}
+table{border-collapse:collapse;width:100%}
+
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Headings break where the sentence wants them to, not where the box does.
+   Body copy gets a ragged right so a stray word never lands alone. */
+h1,h2,h3{text-wrap:balance}
+p,li,dd,figcaption,address{text-wrap:pretty}
+
+/* ---------- Mockup chrome (not part of the design) ---------- */
+.mockbar{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;gap:0;
+  background:#0e1214;color:#fff;
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  overflow-x:auto;
+}
+.mockbar .note{display:none}
+@media (max-width:900px){
+  .mockbar{flex-wrap:wrap;overflow-x:visible}
+  .mockbar .tag,.mockbar label{height:38px}
+}
+@media (min-width:1180px){.mockbar .note{display:flex}}
+.mockbar .tag{padding:0 16px;height:44px;display:flex;align-items:center;border-right:1px solid #2a3033;color:#7f8b90;white-space:nowrap}
+.mockbar label{
+  height:44px;display:flex;align-items:center;padding:0 20px;cursor:pointer;
+  border-right:1px solid #2a3033;color:#9aa4a8;transition:background .15s,color .15s;
+}
+.mockbar label:hover{color:#fff;background:#181d1f}
+.mockbar .note{margin-left:auto;padding:0 16px;color:#5c6669;border-left:1px solid #2a3033}
+
+/* Radio tab machinery — no JS */
+input[name=screen]{position:absolute;opacity:0;pointer-events:none}
+.screen{display:none}
+#s-home:checked    ~ main .screen-home,
+#s-catalog:checked ~ main .screen-catalog,
+#s-product:checked ~ main .screen-product{display:block}
+
+#s-principal:checked ~ main .screen-principal{display:block}
+#s-home:checked    ~ .mockbar label[for=s-home],
+#s-catalog:checked ~ .mockbar label[for=s-catalog],
+#s-product:checked ~ .mockbar label[for=s-product]{background:var(--accent);color:#fff}
+
+#s-principal:checked ~ .mockbar label[for=s-principal]{background:var(--accent);color:#fff}
+
+/* ---------- Primitives ---------- */
+.wrap{max-width:var(--shell);margin:0 auto;padding:0 32px}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.label{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--ink-subtle);
+}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 18px;border:1px solid var(--accent);background:var(--accent);
+  color:var(--accent-ink);font-size:14.5px;font-weight:600;letter-spacing:.01em;
+  border-radius:var(--r-control);cursor:pointer;
+  transition:background .16s,border-color .16s;
+}
+.btn:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+.btn-ghost:hover{background:var(--surface-muted);border-color:var(--ink-subtle)}
+.btn-sm{padding:8px 14px;font-size:13px}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.hdr{
+  position:sticky;top:44px;z-index:50;
+  background:color-mix(in srgb,var(--surface) 92%,transparent);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.hdr-in{
+  max-width:var(--shell);margin:0 auto;padding:0 32px;height:var(--header-h);
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand img{height:34px;width:auto;background:var(--logo-plate)}
+.brand-name{font-size:12px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink);line-height:1.3}
+.brand-sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-subtle)}
+.hdr nav{display:flex;gap:24px;font-size:14.5px;font-weight:500}
+.hdr nav a{color:var(--ink-muted);padding:4px 0;border-bottom:1px solid transparent;transition:color .16s,border-color .16s}
+.hdr nav a:hover{color:var(--ink)}
+.hdr nav a[aria-current]{color:var(--ink);border-bottom-color:var(--accent)}
+.hdr-right{display:flex;align-items:center;gap:16px}
+.lang{display:flex;border:1px solid var(--line);font-family:var(--font-mono);font-size:12px}
+.lang span{padding:5px 9px;color:var(--ink-subtle);cursor:pointer}
+.lang .on{background:var(--ink);color:#fff}
+
+/* ============================================================
+   SCREEN 1 — HOME
+   ============================================================ */
+
+/* --- Datasheet header --- */
+.ds{padding:40px 0 0}
+.ds-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:0;border-top:1px solid var(--ink)}
+.ds-left{padding:26px 40px 30px 0;border-right:1px solid var(--line)}
+.ds-right{padding:26px 0 30px 40px}
+
+.ds-eyebrow{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.ds-eyebrow .dot{width:6px;height:6px;background:var(--accent)}
+.ds h1{
+  font-size:clamp(38px,4.4vw,60px);line-height:1.04;letter-spacing:-0.028em;font-weight:600;
+  /* No width cap — the h1 fills its column; the <br> controls the break. */
+}
+.ds-lede{margin-top:18px;font-size:18px;line-height:1.62;color:var(--ink-muted)}
+.ds-actions{margin-top:24px;display:flex;gap:10px;flex-wrap:wrap}
+
+/* Establishment facts — a definition table, mono values */
+.facts{margin-top:26px;border-top:1px solid var(--line)}
+.facts-row{display:grid;grid-template-columns:150px 1fr;gap:16px;padding:9px 0;border-bottom:1px solid var(--line)}
+.facts-row dt{font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-subtle);padding-top:3px}
+.facts-row dd{margin:0;font-size:15.5px;color:var(--ink)}
+
+/* Inset photo frame with a caption — a plate, not a poster */
+.plate{border:1px solid var(--line);background:var(--surface);padding:8px}
+.plate img{width:100%;height:250px;object-fit:cover;filter:saturate(.72) contrast(1.04)}
+.plate figcaption{
+  display:flex;justify-content:space-between;gap:12px;
+  padding:9px 2px 2px;font-family:var(--font-mono);font-size:11px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--ink-subtle);
+}
+
+/* --- Stat register --- */
+.stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:32px;display:grid;grid-template-columns:repeat(4,1fr)}
+.stat{padding:18px 22px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat-n{font-family:var(--font-mono);font-size:34px;font-weight:500;letter-spacing:-0.03em;line-height:1;font-variant-numeric:tabular-nums}
+.stat-n em{font-style:normal;font-size:15px;color:var(--ink-subtle);margin-left:4px}
+.stat-l{margin-top:7px;font-family:var(--font-mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-subtle)}
+
+/* --- Section scaffolding --- */
+.sec{padding:38px 0}
+.sec-head{display:grid;grid-template-columns:200px 1fr;gap:28px;align-items:start;padding-bottom:18px;border-bottom:1px solid var(--ink)}
+.sec-num{font-family:var(--font-mono);font-size:12px;letter-spacing:.1em;color:var(--accent);padding-top:6px}
+.sec-head h2{font-size:25px;letter-spacing:-0.015em}
+.sec-head p{margin-top:8px;font-size:15.5px;color:var(--ink-muted)}
+
+/* --- Facility types: dense row, not a marquee --- */
+.fac{display:flex;flex-wrap:wrap;border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.fac li{
+  padding:13px 20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  font-size:14.5px;font-weight:500;color:var(--ink-muted);background:var(--surface);
+  flex:1 1 auto;text-align:center;
+}
+
+/* --- Principal register: hairline logo wall --- */
+.pgrid{display:grid;grid-template-columns:repeat(6,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.pgrid li{
+  border-right:1px solid var(--line);border-bottom:1px solid var(--line);
+  background:var(--surface);aspect-ratio:1/1;
+  display:grid;place-items:center;padding:22px;position:relative;
+  transition:background .16s;
+}
+.pgrid li:hover{background:var(--accent-soft)}
+.pgrid img{max-height:44px;width:auto;object-fit:contain;opacity:.72;transition:opacity .16s}
+.pgrid li:hover img{opacity:1}
+.pgrid .idx{
+  position:absolute;top:6px;left:7px;
+  font-family:var(--font-mono);font-size:9.5px;color:var(--ink-subtle);letter-spacing:.06em;
+}
+
+/* --- Dense catalog list --- */
+.dlist{border-top:1px solid var(--ink)}
+.dlist-head,.drow{display:grid;grid-template-columns:72px 1.7fr 1fr 1fr 1.25fr 104px;gap:20px;align-items:center}
+.dlist-head{padding:10px 0;border-bottom:1px solid var(--line)}
+.dlist-head span{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle)}
+.drow{padding:14px 0;border-bottom:1px solid var(--line);transition:background .14s}
+.drow:hover{background:var(--surface-muted)}
+.drow-thumb{width:72px;height:58px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.drow-thumb img{width:100%;height:100%;object-fit:contain;padding:4px}
+.drow-name{font-size:16px;font-weight:600;letter-spacing:-0.008em}
+.drow-ref{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-subtle);margin-top:3px;letter-spacing:.04em}
+.drow-cell{font-size:14.5px;color:var(--ink-muted)}
+.drow-spec{font-family:var(--font-mono);font-size:13px;color:var(--ink-muted)}
+.drow-act{justify-self:end}
+
+/* --- Contact data block --- */
+.cblock{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:1px solid var(--ink);border-left:1px solid var(--line)}
+.cblock > div{padding:20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}
+.cblock dt{margin-bottom:10px}
+.cblock dd{margin:0;font-size:16px;line-height:1.55}
+.cblock dd .mono{font-size:15px}
+
+/* ============================================================
+   SCREEN 2 — CATALOG (a register)
+   ============================================================ */
+.cat-top{padding:32px 0 0}
+.cat-top h1{font-size:40px;letter-spacing:-0.022em}
+.cat-top p{margin-top:10px;font-size:17px;color:var(--ink-muted)}
+.filterbar{
+  margin-top:22px;border:1px solid var(--line);background:var(--surface);
+  display:grid;grid-template-columns:repeat(4,1fr) auto;gap:0;align-items:stretch;
+}
+.fb-cell{padding:14px 18px;border-right:1px solid var(--line)}
+.fb-cell label{display:block;margin-bottom:7px}
+.fb-cell select,.fb-cell input{
+  width:100%;border:0;background:transparent;padding:0;
+  font-family:var(--font-sans);font-size:15.5px;color:var(--ink);
+  appearance:none;outline:none;
+}
+.fb-cell input::placeholder{color:var(--ink-subtle)}
+.fb-go{display:flex;align-items:center;padding:0 20px;background:var(--ink);color:#fff;font-size:14.5px;font-weight:600;cursor:pointer;border:0}
+.fb-go:hover{background:var(--accent)}
+
+.cat-meta{display:flex;flex-wrap:wrap;gap:12px 20px;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--ink);margin-top:24px}
+.cat-meta .mono{font-size:12.5px;letter-spacing:.06em;color:var(--ink-subtle);text-transform:uppercase}
+.cat-meta .sorts{display:flex;gap:2px;font-family:var(--font-mono);font-size:12.5px}
+.cat-meta .sorts span{padding:4px 9px;border:1px solid var(--line);color:var(--ink-muted);cursor:pointer}
+.cat-meta .sorts span.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.pager{display:flex;justify-content:center;gap:0;margin-top:28px}
+.pager a{padding:9px 16px;border:1px solid var(--line);margin-left:-1px;font-family:var(--font-mono);font-size:13.5px;color:var(--ink-muted)}
+.pager a.on{background:var(--ink);color:#fff;border-color:var(--ink);position:relative;z-index:1}
+
+/* ============================================================
+   SCREEN 3 — PRODUCT (the datasheet)
+   ============================================================ */
+.crumb{padding:20px 0;font-family:var(--font-mono);font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-subtle)}
+.crumb a:hover{color:var(--accent)}
+.crumb .sep{margin:0 8px;color:var(--line-strong)}
+
+.prod-head{display:grid;grid-template-columns:1fr 360px;gap:0;border-top:1px solid var(--ink)}
+.prod-main{padding:26px 40px 30px 0;border-right:1px solid var(--line)}
+.prod-aside{padding:26px 0 30px 40px;background:var(--surface-muted)}
+
+.refrow{display:flex;gap:20px;flex-wrap:wrap;padding-bottom:14px;border-bottom:1px solid var(--line);margin-bottom:18px}
+.refrow div{display:flex;gap:8px;align-items:baseline}
+.refrow .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle)}
+.refrow .v{font-family:var(--font-mono);font-size:13.5px;font-weight:500;color:var(--ink)}
+
+.prod-main h1{font-size:clamp(32px,3.2vw,44px);letter-spacing:-0.025em;line-height:1.08}
+.prod-def{margin-top:16px;font-size:17.5px;line-height:1.65;color:var(--ink-muted);padding-left:16px;border-left:2px solid var(--accent)}
+
+/* Gallery strip */
+.gal{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:24px;border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.gal button{border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);padding:10px;cursor:pointer;aspect-ratio:4/3}
+.gal img{width:100%;height:100%;object-fit:contain}
+.gal .on{outline:2px solid var(--accent);outline-offset:-2px}
+
+/* Spec table — the hero */
+.specsec{margin-top:32px}
+.specsec-h{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:10px;border-bottom:1px solid var(--ink)}
+.specsec-h h2{font-size:20px}
+.spectbl{margin-top:0}
+.spectbl tr{border-bottom:1px solid var(--line)}
+.spectbl th{
+  text-align:left;font-family:var(--font-mono);font-size:11px;font-weight:500;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle);
+  padding:11px 16px 11px 0;width:230px;vertical-align:top;
+}
+.spectbl td{padding:11px 0;font-family:var(--font-mono);font-size:14.5px;color:var(--ink);font-variant-numeric:tabular-nums}
+.spectbl tr:hover{background:var(--surface-muted)}
+
+/* RFQ rail */
+.rfq{padding:20px;border:1px solid var(--ink);background:var(--surface)}
+.rfq h3{font-size:18px;margin-bottom:8px}
+.rfq p{font-size:15px;color:var(--ink-muted);line-height:1.55}
+.rfq .field{margin-top:13px}
+.rfq .field label{display:block;margin-bottom:6px}
+.rfq input,.rfq textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--line-strong);background:var(--canvas);
+  font-family:var(--font-sans);font-size:15px;color:var(--ink);border-radius:0;
+}
+.rfq .btn{width:100%;justify-content:center;margin-top:16px}
+.rfq-meta{margin-top:12px;padding-top:12px;border-top:1px solid var(--line);font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-subtle);line-height:1.7}
+
+/* Certification / provenance block */
+.prov{margin-top:16px;border:1px solid var(--line);background:var(--surface)}
+.prov-h{padding:11px 14px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle)}
+.prov-row{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);align-items:center}
+.prov-row:last-child{border-bottom:0}
+.prov-row .k{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-subtle)}
+.prov-row .v{font-family:var(--font-mono);font-size:13.5px}
+.seal{
+  display:inline-flex;align-items:center;gap:6px;
+  border:1px solid var(--accent);color:var(--accent);background:var(--accent-soft);
+  padding:3px 8px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;
+}
+.seal::before{content:'';width:5px;height:5px;background:var(--accent)}
+
+/* Related */
+.relgrid{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line)}
+.relgrid a{border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);padding:16px;transition:background .14s}
+.relgrid a:hover{background:var(--accent-soft)}
+.relgrid .im{aspect-ratio:4/3;border:1px solid var(--line);overflow:hidden;background:var(--surface-muted)}
+.relgrid img{width:100%;height:100%;object-fit:contain;padding:14px}
+.relgrid .nm{margin-top:12px;font-size:15px;font-weight:600;letter-spacing:-0.008em}
+.relgrid .mt{margin-top:5px;font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-subtle)}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.ftr{margin-top:56px;background:#0e1214;color:#f2f4f4}
+.ftr-in{max-width:var(--shell);margin:0 auto;padding:44px 32px 0}
+.ftr-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;padding-bottom:34px}
+.ftr h4{font-family:var(--font-mono);font-size:11px;letter-spacing:.11em;text-transform:uppercase;color:#6b7378;margin-bottom:14px;font-weight:500}
+.ftr a{color:#9aa3a6;font-size:15px;transition:color .16s}
+.ftr a:hover{color:#fff}
+.ftr li{margin-bottom:10px}
+.ftr img{height:30px;width:auto;background:var(--logo-plate);padding:3px}
+.ftr .addr{margin-top:14px;color:#9aa3a6;font-size:15px;line-height:1.6;font-style:normal}
+.ftr-bot{border-top:1px solid #232a2c;display:flex;justify-content:space-between;gap:16px;padding:18px 0;font-family:var(--font-mono);font-size:12px;letter-spacing:.05em;color:#6b7378}
+
+/* ============================================================
+   MOTION — mechanical, restrained
+   ============================================================ */
+@keyframes dsIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes ruleIn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes rowIn{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:none}}
+
+.screen-home .ds-grid{border-top:0;position:relative}
+.screen-home .ds-grid::before{
+  content:'';position:absolute;inset:0 0 auto 0;height:1px;background:var(--ink);
+  transform-origin:left;animation:ruleIn .5s cubic-bezier(.2,.7,.3,1) both;
+}
+.screen-home .ds-left > *{animation:dsIn .45s cubic-bezier(.2,.7,.3,1) both}
+.screen-home .ds-left > *:nth-child(1){animation-delay:.04s}
+.screen-home .ds-left > *:nth-child(2){animation-delay:.10s}
+.screen-home .ds-left > *:nth-child(3){animation-delay:.16s}
+.screen-home .ds-left > *:nth-child(4){animation-delay:.22s}
+.screen-home .ds-left > *:nth-child(5){animation-delay:.28s}
+.screen-home .stat{animation:dsIn .4s cubic-bezier(.2,.7,.3,1) both}
+.screen-home .stat:nth-child(1){animation-delay:.32s}
+.screen-home .stat:nth-child(2){animation-delay:.38s}
+.screen-home .stat:nth-child(3){animation-delay:.44s}
+.screen-home .stat:nth-child(4){animation-delay:.50s}
+.screen-catalog .drow{animation:rowIn .3s ease-out both}
+.screen-catalog .drow:nth-child(2){animation-delay:.03s}
+.screen-catalog .drow:nth-child(3){animation-delay:.06s}
+.screen-catalog .drow:nth-child(4){animation-delay:.09s}
+.screen-catalog .drow:nth-child(5){animation-delay:.12s}
+.screen-catalog .drow:nth-child(6){animation-delay:.15s}
+.screen-catalog .drow:nth-child(7){animation-delay:.18s}
+.screen-catalog .drow:nth-child(8){animation-delay:.21s}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none !important;transition:none !important}
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width:1100px){
+  .ds-grid,.prod-head{grid-template-columns:1fr}
+  .ds-left,.prod-main{padding-right:0;border-right:0;border-bottom:1px solid var(--line)}
+  .ds-right,.prod-aside{padding-left:0;padding-top:28px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(2){border-right:0}
+  .stat:nth-child(1),.stat:nth-child(2){border-bottom:1px solid var(--line)}
+  .sec-head{grid-template-columns:1fr;gap:10px}
+  .pgrid{grid-template-columns:repeat(4,1fr)}
+  .cblock{grid-template-columns:1fr 1fr}
+  .dlist-head,.drow{grid-template-columns:64px 1.6fr 1fr 100px}
+  .drow-cell.hide-m,.dlist-head .hide-m{display:none}
+  .filterbar{grid-template-columns:1fr 1fr}
+  .fb-go{padding:16px;justify-content:center}
+  .relgrid{grid-template-columns:repeat(2,1fr)}
+  .ftr-grid{grid-template-columns:1fr 1fr}
+}
+@media (max-width:720px){
+  .wrap,.hdr-in,.ftr-in{padding-left:18px;padding-right:18px}
+  .hdr nav{display:none}
+  .pgrid{grid-template-columns:repeat(3,1fr)}
+  .cblock{grid-template-columns:1fr}
+  .filterbar{grid-template-columns:1fr}
+  .fb-cell{border-right:0;border-bottom:1px solid var(--line)}
+  .dlist-head,.drow{grid-template-columns:1fr;gap:10px}
+  .dlist-head{display:none}
+  .drow-thumb{width:100%;height:150px}
+  .drow-act{justify-self:start}
+  .gal{grid-template-columns:repeat(3,1fr)}
+  .stats{grid-template-columns:1fr 1fr}
+  .ftr-grid{grid-template-columns:1fr}
+  .facts-row{grid-template-columns:1fr;gap:4px}
+}
+
+/* ============================================================
+   SCREEN 4 — PRINCIPAL
+   A distributor's page about a manufacturer: who they are,
+   what of theirs we carry, and how to request it.
+   ============================================================ */
+.pr-top{display:grid;grid-template-columns:1fr 340px;gap:36px;padding:32px 0 30px;border-bottom:1px solid var(--line-ink)}
+.pr-mark{
+  display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--line);background:var(--surface);height:120px;padding:22px;margin-bottom:20px;
+}
+.pr-mark img{max-height:100%;max-width:100%;object-fit:contain}
+.pr-name{font-size:clamp(38px,4.6vw,60px);letter-spacing:-0.028em;line-height:1.02}
+.pr-sub{margin-top:14px;font-family:var(--font-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.pr-lede{margin-top:18px;font-size:18px;line-height:1.65;color:var(--ink-muted)}
+.pr-side{border-left:1px solid var(--line);padding-left:32px}
+.pr-side .row{display:grid;grid-template-columns:1fr auto;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);align-items:baseline}
+.pr-side .k{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle)}
+.pr-side .v{font-size:15px;font-weight:500;text-align:right}
+.pr-sec{margin-top:38px}
+.pr-sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:20px;padding-bottom:12px;border-bottom:1px solid var(--line-ink)}
+.pr-sec-h h2{font-size:23px;letter-spacing:-0.015em}
+.pr-sec-h .label{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-subtle)}
+.pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-top:0}
+.pr-card{
+  display:grid;grid-template-rows:180px 1fr;border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  background:var(--surface);transition:background .18s;
+}
+.pr-card:nth-child(3n){border-right:0}
+.pr-card:hover{background:var(--canvas)}
+.pr-card-img{display:flex;align-items:center;justify-content:center;padding:20px;border-bottom:1px solid var(--line);overflow:hidden}
+.pr-card-img img{max-width:100%;max-height:100%;object-fit:contain}
+.pr-card-body{padding:18px}
+.pr-card-ref{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;color:var(--accent)}
+.pr-card-name{margin-top:8px;font-size:19px;letter-spacing:-0.015em;line-height:1.25}
+.pr-card-spec{margin-top:9px;font-size:14.5px;color:var(--ink-muted);line-height:1.55}
+.pr-card-foot{margin-top:16px;display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:500}
+.pr-card-foot .cat{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-subtle)}
+.pr-card-foot .go{color:var(--accent)}
+.pr-cta{margin-top:32px;border:1px solid var(--line-ink);background:var(--surface);display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:26px}
+.pr-cta h3{font-size:25px;letter-spacing:-0.018em}
+.pr-cta p{margin-top:10px;font-size:16px;color:var(--ink-muted)}
+.pr-list{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line)}
+.pr-list a{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:13px 16px;border-bottom:1px solid var(--line);border-right:1px solid var(--line);
+  font-size:14.5px;font-weight:500;transition:background .16s;
+}
+.pr-list a:nth-child(4n){border-right:0}
+.pr-list a:hover{background:var(--surface)}
+.pr-list a.on{background:var(--surface);box-shadow:inset 2px 0 0 var(--accent)}
+.pr-list .n{font-family:var(--font-mono);font-size:11px;color:var(--ink-subtle)}
+
+@media (max-width:1100px){
+  .pr-top{grid-template-columns:1fr;gap:26px}
+  .pr-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:24px}
+  .pr-grid{grid-template-columns:repeat(2,1fr)}
+  .pr-card:nth-child(3n){border-right:1px solid var(--line)}
+  .pr-card:nth-child(2n){border-right:0}
+  .pr-list{grid-template-columns:repeat(3,1fr)}
+  .pr-list a:nth-child(4n){border-right:1px solid var(--line)}
+  .pr-list a:nth-child(3n){border-right:0}
+  .pr-cta{grid-template-columns:1fr;gap:20px}
+}
+@media (max-width:720px){
+  .pr-grid{grid-template-columns:1fr}
+  .pr-card,.pr-card:nth-child(3n),.pr-card:nth-child(2n){border-right:0}
+  .pr-list{grid-template-columns:1fr 1fr}
+  .pr-list a:nth-child(3n){border-right:1px solid var(--line)}
+  .pr-list a:nth-child(2n){border-right:0}
+}
+
+/* ============================================================
+   PROCESS / SERVICE / FAQ
+   Added in the density pass: the page explained what we sell but
+   never how to buy it, what happens after delivery, or the
+   questions procurement actually asks.
+   ============================================================ */
+.steps{display:grid;grid-template-columns:repeat(4,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line);margin-top:24px}
+.steps li{padding:20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}
+.steps .n{font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.steps h3{margin-top:10px;font-size:16.5px;letter-spacing:-0.012em}
+.steps p{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--ink-muted)}
+
+.svc{display:grid;grid-template-columns:repeat(3,1fr);border-left:1px solid var(--line);border-top:1px solid var(--line);margin-top:24px}
+.svc > div{padding:20px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}
+.svc h3{font-size:16.5px;letter-spacing:-0.012em}
+.svc p{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--ink-muted)}
+
+.qa{margin-top:24px;border-top:1px solid var(--ink)}
+.qa details{border-bottom:1px solid var(--line)}
+.qa summary{cursor:pointer;padding:15px 0;font-size:17.5px;font-weight:600;letter-spacing:-0.012em;display:flex;justify-content:space-between;align-items:baseline;gap:24px;list-style:none}
+.qa summary::-webkit-details-marker{display:none}
+.qa summary::after{content:'+';font-family:var(--font-mono);font-size:15px;color:var(--accent);flex:none}
+.qa details[open] summary::after{content:'–'}
+.qa .a{padding:0 0 18px;font-size:15.5px;line-height:1.7;color:var(--ink-muted)}
+.qa .a p + p{margin-top:12px}
+
+@media (max-width:1100px){
+  .steps{grid-template-columns:1fr 1fr}
+  .svc{grid-template-columns:1fr 1fr}
+}
+@media (max-width:720px){
+  .steps,.svc{grid-template-columns:1fr}
+  .steps li,.svc > div{border-right:0}
+}
+</style>
+</head>
+<body>
+
+<input type="radio" name="screen" id="s-home" checked>
+<input type="radio" name="screen" id="s-catalog">
+<input type="radio" name="screen" id="s-product">
+<input type="radio" name="screen" id="s-principal">
+
+<nav class="mockbar">
+  <span class="tag">Concept 1 — Instrument</span>
+  <label for="s-home">Home</label>
+  <label for="s-catalog">Catalog</label>
+  <label for="s-product">Product</label>
+  <label for="s-principal">Principal</label>
+  <span class="note">IBM Plex Sans + Plex Mono · square · hairline grid</span>
+</nav>
+
+<header class="hdr">
+  <div class="hdr-in">
+    <a class="brand" href="#">
+      <img src="../images/MMG-logo.png" alt="MMG">
+      <span>
+        <span class="brand-name">Medquest Mitra Global</span><br>
+        <span class="brand-sub">Healthcare Distribution</span>
+      </span>
+    </a>
+    <nav>
+      <a href="#" aria-current="page">Produk</a>
+      <a href="#">Principal</a>
+      <a href="#">Tentang Kami</a>
+      <a href="#">Kontak</a>
+    </nav>
+    <div class="hdr-right">
+      <div class="lang"><span class="on">ID</span><span>EN</span></div>
+      <a class="btn btn-sm" href="#">Minta Penawaran</a>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 1 — HOME
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen screen-home">
+
+  <section class="ds">
+    <div class="wrap">
+      <div class="ds-grid">
+
+        <div class="ds-left">
+          <div class="ds-eyebrow">
+            <span class="dot"></span>
+            <span class="label">Distributor Alat Kesehatan · Jakarta</span>
+          </div>
+
+          <h1>Alat kesehatan,<br>disuplai dengan presisi.</h1>
+
+          <p class="ds-lede">
+            Distributor alat kesehatan untuk rumah sakit, klinik, laboratorium, dan
+            apotek di seluruh Indonesia. Katalog lengkap, spesifikasi teknis terbuka,
+            dan jalur permintaan penawaran yang langsung.
+          </p>
+
+          <p class="ds-lede">
+            Kami mewakili 26 manufaktur internasional secara resmi, dengan izin edar
+            yang dapat ditelusuri untuk setiap produk yang kami kirim.
+          </p>
+
+          <div class="ds-actions">
+            <a class="btn" href="#">Lihat Katalog</a>
+            <a class="btn btn-ghost" href="#">Hubungi Kami</a>
+          </div>
+
+          <dl class="facts">
+            <div class="facts-row">
+              <dt>Entitas</dt>
+              <dd>PT Medquest Mitra Global</dd>
+            </div>
+            <div class="facts-row">
+              <dt>Kantor</dt>
+              <dd>Menara Salemba, 7th Floor, Jl. Salemba Raya No. 5-5A, Jakarta Pusat</dd>
+            </div>
+            <div class="facts-row">
+              <dt>Jangkauan</dt>
+              <dd>Distribusi nasional — Jawa, Sumatera, Kalimantan, Sulawesi, Bali</dd>
+            </div>
+            <div class="facts-row">
+              <dt>Kategori</dt>
+              <dd>Instrumen · Bahan Habis Pakai · Reagen · Peralatan Medis</dd>
+            </div>
+          </dl>
+        </div>
+
+        <div class="ds-right">
+          <figure class="plate" style="margin:0">
+            <img src="../images/hero-1600.jpg" alt="Laboratorium klinik">
+            <figcaption>
+              <span>Fig. 01 — Laboratorium klinik</span>
+              <span>Jakarta</span>
+            </figcaption>
+          </figure>
+        </div>
+
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-n">26</div>
+          <div class="stat-l">Principal</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">4</div>
+          <div class="stat-l">Kategori produk</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">10</div>
+          <div class="stat-l">Produk terdaftar</div>
+        </div>
+        <div class="stat">
+          <div class="stat-n">8</div>
+          <div class="stat-l">Jenis fasilitas</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01 — Facility types -->
+  <section class="sec">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">01 —</div>
+        <div>
+          <h2>Fasilitas yang kami layani</h2>
+          <p>Setiap jenis fasilitas punya kebutuhan pengadaan, regulasi, dan volume yang berbeda. Rumah sakit membutuhkan dokumen izin edar lengkap dan jadwal pengiriman yang bisa diaudit; laboratorium riset lebih sering menanyakan kompatibilitas reagen dan dukungan teknis. Kami menyesuaikan jalur distribusinya, bukan memaksakan satu alur untuk semua.</p>
+        </div>
+      </div>
+      <ul class="fac" style="margin-top:24px">
+        <li>Rumah Sakit</li>
+        <li>Klinik</li>
+        <li>Laboratorium Klinik</li>
+        <li>Puskesmas</li>
+        <li>Apotek</li>
+        <li>Balai Laboratorium</li>
+        <li>Industri Farmasi</li>
+        <li>Universitas</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 02 — Principal register -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">02 —</div>
+        <div>
+          <h2>Register principal</h2>
+          <p>Manufaktur dan distributor yang kami wakili secara resmi di Indonesia. Setiap produk di katalog kami berasal dari register ini — tidak ada barang dari jalur yang tidak jelas asalnya. Bila Anda membutuhkan merek di luar daftar ini, kami cek ketersediaannya melalui jaringan principal kami.</p>
+        </div>
+      </div>
+      <ul class="pgrid" style="margin-top:24px">
+        <li><span class="idx">01</span><img src="../images/principals/tecan.png" alt="Tecan"></li>
+        <li><span class="idx">02</span><img src="../images/principals/sysmex.png" alt="Sysmex"></li>
+        <li><span class="idx">03</span><img src="../images/principals/abbott.png" alt="Abbott"></li>
+        <li><span class="idx">04</span><img src="../images/principals/mindray.png" alt="Mindray"></li>
+        <li><span class="idx">05</span><img src="../images/principals/biomerieux.png" alt="bioMérieux"></li>
+        <li><span class="idx">06</span><img src="../images/principals/arctiko.png" alt="Arctiko"></li>
+        <li><span class="idx">07</span><img src="../images/principals/micronic.png" alt="Micronic"></li>
+        <li><span class="idx">08</span><img src="../images/principals/infitek.png" alt="Infitek"></li>
+        <li><span class="idx">09</span><img src="../images/principals/oxford.png" alt="Oxford"></li>
+        <li><span class="idx">10</span><img src="../images/principals/mandelab.png" alt="Mandelab"></li>
+        <li><span class="idx">11</span><img src="../images/principals/diapro.png" alt="Diapro"></li>
+        <li><span class="idx">12</span><img src="../images/principals/lumira.png" alt="Lumira"></li>
+      </ul>
+      <div style="margin-top:16px">
+        <a class="btn btn-ghost btn-sm" href="#">Lihat seluruh 26 principal →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 — Catalog -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">03 —</div>
+        <div>
+          <h2>Katalog</h2>
+          <p>Tidak ada harga yang ditampilkan. Semua pengadaan melalui permintaan penawaran, agar harga menyesuaikan volume, jalur anggaran, dan kebutuhan layanan institusi Anda. Setiap produk dilengkapi spesifikasi teknis dari principal, bukan hasil rangkuman pemasaran.</p>
+        </div>
+      </div>
+
+      <div class="dlist" style="margin-top:24px">
+        <div class="dlist-head">
+          <span></span>
+          <span>Produk</span>
+          <span>Principal</span>
+          <span class="hide-m">Kategori</span>
+          <span class="hide-m">Spesifikasi kunci</span>
+          <span></span>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/tecan-spark.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Tecan SPARK</div>
+            <div class="drow-ref">MMG-PRO-000043</div>
+          </div>
+          <div class="drow-cell">Tecan</div>
+          <div class="drow-cell hide-m">Instrumen</div>
+          <div class="drow-spec hide-m">200–1000 nm · 6 mode</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/tecan-infinite-200-pro.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Tecan Infinite 200 Pro</div>
+            <div class="drow-ref">MMG-PRO-000042</div>
+          </div>
+          <div class="drow-cell">Tecan</div>
+          <div class="drow-cell hide-m">Instrumen</div>
+          <div class="drow-spec hide-m">Monokromator &amp; filter · 6–384 well</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/arctiko-lfe-360.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Arctiko LFE 360</div>
+            <div class="drow-ref">MMG-PRO-000107</div>
+          </div>
+          <div class="drow-cell">Arctiko</div>
+          <div class="drow-cell hide-m">Peralatan Medis</div>
+          <div class="drow-spec hide-m">−25…−15 °C · 356 L</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/tecan-hydroflex-gp.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Tecan HydroFlex GP</div>
+            <div class="drow-ref">MMG-PRO-000470</div>
+          </div>
+          <div class="drow-cell">Tecan</div>
+          <div class="drow-cell hide-m">Instrumen</div>
+          <div class="drow-spec hide-m">96-well · 8-channel</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/arctiko-bbr-500-d.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Arctiko BBR 500-D</div>
+            <div class="drow-ref">MMG-PRO-000006</div>
+          </div>
+          <div class="drow-cell">Arctiko</div>
+          <div class="drow-cell hide-m">Peralatan Medis</div>
+          <div class="drow-spec hide-m">4 °C · 532 L</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+
+        <div class="drow">
+          <div class="drow-thumb"><img src="../images/products/tecan-infinite-f50.jpg" alt=""></div>
+          <div>
+            <div class="drow-name">Tecan Infinite F50</div>
+            <div class="drow-ref">MMG-PRO-000044</div>
+          </div>
+          <div class="drow-cell">Tecan</div>
+          <div class="drow-cell hide-m">Instrumen</div>
+          <div class="drow-spec hide-m">400–700 nm · 8 filter</div>
+          <a class="btn btn-ghost btn-sm drow-act" href="#">Penawaran</a>
+        </div>
+      </div>
+
+      <div style="margin-top:18px">
+        <a class="btn btn-ghost btn-sm" href="#">Seluruh katalog →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 — After-sales -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">04 —</div>
+        <div>
+          <h2>Layanan purna jual</h2>
+          <p>Instrumen laboratorium dipakai bertahun-tahun. Yang menentukan bukan hanya harga beli, tapi siapa yang mengurusnya setelah itu.</p>
+        </div>
+      </div>
+      <div class="svc">
+        <div>
+          <h3>Pemasangan &amp; kalibrasi</h3>
+          <p>Teknisi kami memasang instrumen di lokasi, menjalankan uji fungsi awal, dan menyerahkan berita acara yang bisa Anda arsipkan.</p>
+        </div>
+        <div>
+          <h3>Pelatihan operator</h3>
+          <p>Sesi pelatihan untuk analis dan operator: alur kerja harian, perawatan rutin, dan cara membaca pesan galat instrumen.</p>
+        </div>
+        <div>
+          <h3>Suku cadang &amp; aksesori</h3>
+          <p>Suku cadang dan aksesori resmi dari principal, dipesan melalui jalur yang sama seperti produk utama.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 — FAQ -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">05 —</div>
+        <div>
+          <h2>Pertanyaan yang sering diajukan</h2>
+          <p>Hal-hal yang paling sering ditanyakan bagian pengadaan dan laboratorium sebelum memesan.</p>
+        </div>
+      </div>
+      <div class="qa">
+        <details open>
+          <summary>Apakah harga ditampilkan di situs?</summary>
+          <div class="a">
+            <p>Tidak. Pengadaan institusi menyesuaikan volume, jalur anggaran, dan kebutuhan layanan, sehingga harga selalu spesifik per permintaan. Kirim daftar kebutuhan Anda dan kami balas dengan penawaran tertulis.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Apakah Anda melayani pembelian dari luar Jakarta?</summary>
+          <div class="a">
+            <p>Ya. Kami mengirim ke seluruh Indonesia, termasuk Jawa, Sumatera, Kalimantan, Sulawesi, dan Bali. Pengiriman instrumen besar dijadwalkan terpisah karena memerlukan penanganan khusus.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Dokumen apa yang disertakan saat pengiriman?</summary>
+          <div class="a">
+            <p>Setiap pengiriman disertai faktur, surat jalan, dan dokumen asal barang. Untuk produk yang memerlukan izin edar alat kesehatan, salinan izin disertakan atau dilampirkan pada penawaran.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Berapa lama proses penawaran?</summary>
+          <div class="a">
+            <p>Kami membalas dalam satu hari kerja untuk permintaan yang sudah lengkap. Jika produk harus dikonfirmasi ke principal terlebih dahulu, kami beri tahu estimasi waktunya di balasan pertama.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Bisakah Anda mengadakan produk yang belum ada di katalog?</summary>
+          <div class="a">
+            <p>Sering. Sebagian permintaan kami adalah pengadaan khusus di luar katalog. Sebutkan merek, tipe, dan spesifikasi yang dibutuhkan; kami cek ketersediaannya melalui jaringan principal kami.</p>
+          </div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 — Contact -->
+  <section class="sec" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div class="sec-num">06 —</div>
+        <div>
+          <h2>Kontak</h2>
+          <p>Untuk penawaran, ketersediaan stok, atau pertanyaan teknis.</p>
+        </div>
+      </div>
+      <dl class="cblock" style="margin-top:24px">
+        <div>
+          <dt class="label">Kantor</dt>
+          <dd>Menara Salemba, 7th Floor<br>Jl. Salemba Raya No. 5-5A<br>Paseban, Senen, Jakarta Pusat 10440</dd>
+        </div>
+        <div>
+          <dt class="label">Telepon</dt>
+          <dd class="mono">(021) 39842961</dd>
+          <dt class="label" style="margin-top:20px">Jam operasional</dt>
+          <dd class="mono">Sen–Jum · 08.00–17.00</dd>
+        </div>
+        <div>
+          <dt class="label">Permintaan penawaran</dt>
+          <dd>Kirim daftar kebutuhan Anda dan kami balas dengan penawaran resmi.</dd>
+          <a class="btn btn-sm" style="margin-top:14px" href="#">Buka formulir →</a>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 2 — CATALOG (a register)
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen screen-catalog">
+  <div class="wrap">
+
+    <div class="cat-top">
+      <div class="label">Katalog</div>
+      <h1 style="margin-top:12px">Produk</h1>
+      <p>Seluruh alat kesehatan yang kami distribusikan, dengan spesifikasi teknis lengkap. Tidak ada harga yang dipublikasikan — semua pengadaan melalui permintaan penawaran.</p>
+    </div>
+
+    <form class="filterbar">
+      <div class="fb-cell">
+        <label class="label" for="f-cat">Kategori</label>
+        <select id="f-cat">
+          <option>Semua</option>
+          <option>Instrumen</option>
+          <option>Bahan Habis Pakai</option>
+          <option>Reagen</option>
+          <option>Peralatan Medis</option>
+        </select>
+      </div>
+      <div class="fb-cell">
+        <label class="label" for="f-pr">Principal</label>
+        <select id="f-pr">
+          <option>Semua</option>
+          <option>Tecan</option>
+          <option>Arctiko</option>
+          <option>Sysmex</option>
+          <option>Abbott</option>
+          <option>Mindray</option>
+          <option>bioMérieux</option>
+        </select>
+      </div>
+      <div class="fb-cell">
+        <label class="label" for="f-q">Cari</label>
+        <input id="f-q" type="search" placeholder="Nama produk">
+      </div>
+      <div class="fb-cell">
+        <label class="label" for="f-ref">Nomor referensi</label>
+        <input id="f-ref" type="search" placeholder="MMG-PRO-______">
+      </div>
+      <button class="fb-go" type="submit">Terapkan</button>
+    </form>
+
+    <div class="cat-meta">
+      <span class="mono">Menampilkan 1–8 dari 10 produk</span>
+      <div class="sorts">
+        <span class="on">Relevansi</span>
+        <span>Terbaru</span>
+        <span>Nama A–Z</span>
+        <span>Referensi</span>
+      </div>
+    </div>
+
+    <div class="dlist">
+      <div class="dlist-head">
+        <span></span>
+        <span>Produk</span>
+        <span>Principal</span>
+        <span class="hide-m">Kategori</span>
+        <span class="hide-m">Spesifikasi kunci</span>
+        <span></span>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/tecan-spark.jpg" alt=""></div>
+        <div><div class="drow-name">Tecan SPARK</div><div class="drow-ref">MMG-PRO-000043</div></div>
+        <div class="drow-cell">Tecan</div>
+        <div class="drow-cell hide-m">Instrumen</div>
+        <div class="drow-spec hide-m">200–1000 nm · 6 mode</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/tecan-infinite-200-pro.jpg" alt=""></div>
+        <div><div class="drow-name">Tecan Infinite 200 Pro</div><div class="drow-ref">MMG-PRO-000042</div></div>
+        <div class="drow-cell">Tecan</div>
+        <div class="drow-cell hide-m">Instrumen</div>
+        <div class="drow-spec hide-m">Monokromator &amp; filter · 6–384 well</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/tecan-infinite-f50.jpg" alt=""></div>
+        <div><div class="drow-name">Tecan Infinite F50</div><div class="drow-ref">MMG-PRO-000044</div></div>
+        <div class="drow-cell">Tecan</div>
+        <div class="drow-cell hide-m">Instrumen</div>
+        <div class="drow-spec hide-m">400–700 nm · 8 filter</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/tecan-hydroflex-gp.jpg" alt=""></div>
+        <div><div class="drow-name">Tecan HydroFlex GP</div><div class="drow-ref">MMG-PRO-000470</div></div>
+        <div class="drow-cell">Tecan</div>
+        <div class="drow-cell hide-m">Instrumen</div>
+        <div class="drow-spec hide-m">96-well · 8-channel</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/tecan-cell-chip.jpg" alt=""></div>
+        <div><div class="drow-name">Tecan Cell Chip 1 Box</div><div class="drow-ref">MMG-PRO-000471</div></div>
+        <div class="drow-cell">Tecan</div>
+        <div class="drow-cell hide-m">Bahan Habis Pakai</div>
+        <div class="drow-spec hide-m">50 pcs/box · 100 test</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/arctiko-lfe-360.jpg" alt=""></div>
+        <div><div class="drow-name">Arctiko LFE 360</div><div class="drow-ref">MMG-PRO-000107</div></div>
+        <div class="drow-cell">Arctiko</div>
+        <div class="drow-cell hide-m">Peralatan Medis</div>
+        <div class="drow-spec hide-m">−25…−15 °C · 356 L</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/arctiko-lre-490.jpg" alt=""></div>
+        <div><div class="drow-name">Arctiko LRE 490</div><div class="drow-ref">MMG-PRO-000007</div></div>
+        <div class="drow-cell">Arctiko</div>
+        <div class="drow-cell hide-m">Peralatan Medis</div>
+        <div class="drow-spec hide-m">2–8 °C · 488 L</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+
+      <div class="drow">
+        <div class="drow-thumb"><img src="../images/products/arctiko-uluf-450-2m.jpg" alt=""></div>
+        <div><div class="drow-name">Arctiko ULUF 450-2M</div><div class="drow-ref">MMG-PRO-000005</div></div>
+        <div class="drow-cell">Arctiko</div>
+        <div class="drow-cell hide-m">Peralatan Medis</div>
+        <div class="drow-spec hide-m">−86…−40 °C · 370 L</div>
+        <a class="btn btn-ghost btn-sm drow-act" href="#">Detail</a>
+      </div>
+    </div>
+
+    <div class="pager">
+      <a href="#" aria-disabled="true" style="color:var(--line-strong)">‹</a>
+      <a href="#" class="on">1</a>
+      <a href="#">2</a>
+      <a href="#">›</a>
+    </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 3 — PRODUCT (the datasheet)
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen screen-product">
+  <div class="wrap">
+
+    <nav class="crumb">
+      <a href="#">Beranda</a><span class="sep">/</span>
+      <a href="#">Produk</a><span class="sep">/</span>
+      <a href="#">Instrumen</a><span class="sep">/</span>
+      <span style="color:var(--ink)">Tecan Spark</span>
+    </nav>
+
+    <div class="prod-head">
+
+      <div class="prod-main">
+        <div class="refrow">
+          <div><span class="k">Ref</span><span class="v">MMG-PRO-000043</span></div>
+          <div><span class="k">Principal</span><span class="v">Tecan</span></div>
+          <div><span class="k">Kategori</span><span class="v">Instrumen</span></div>
+          <div><span class="k">Diperbarui</span><span class="v">2026-09-18</span></div>
+        </div>
+
+        <h1>Tecan SPARK</h1>
+
+        <p class="prod-def">
+          Microplate reader multimode untuk laboratorium klinik dan riset, mendukung
+          pengukuran absorbansi, fluoresensi, dan luminesensi dalam satu instrumen.
+          Dirancang untuk throughput menengah dengan footprint ringkas dan validasi
+          hasil yang dapat diaudit.
+        </p>
+
+        <div class="gal">
+          <button class="on"><img src="../images/products/tecan-spark.jpg" alt="Tecan Spark"></button>
+          <button><img src="../images/products/tecan-infinite-200-pro.jpg" alt=""></button>
+          <button><img src="../images/products/tecan-hydroflex-gp.jpg" alt=""></button>
+          <button><img src="../images/products/tecan-infinite-f50.jpg" alt=""></button>
+        </div>
+
+        <div class="specsec">
+          <div class="specsec-h">
+            <h2>Spesifikasi teknis</h2>
+            <span class="label">4 parameter</span>
+          </div>
+          <table class="spectbl">
+            <tbody>
+              <tr><th>Jenis</th><td>Multimode microplate reader</td></tr>
+              <tr><th>Aplikasi</th><td>Biokimia, HTS, analisis sel hidup</td></tr>
+              <tr><th>Pencitraan sel</th><td>Modul terintegrasi</td></tr>
+              <tr><th>Konfigurasi</th><td>Dapat dipersonalisasi</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="specsec">
+          <div class="specsec-h"><h2>Apa itu multimode reader?</h2></div>
+          <p style="margin-top:16px;font-size:17px;line-height:1.7;color:var(--ink-muted)">
+            Multimode reader adalah instrumen laboratorium yang membaca reaksi di dalam
+            microplate dengan lebih dari satu metode deteksi. Reader single-mode hanya
+            mengukur absorbansi; reader multimode menambahkan fluoresensi, luminesensi,
+            atau time-resolved fluorescence pada satu unit. Bagi laboratorium yang
+            menjalankan beberapa jenis uji sekaligus, satu multimode reader menggantikan
+            dua atau tiga instrumen terpisah.
+          </p>
+
+          <div class="specsec-h" style="margin-top:36px"><h2>Bagaimana cara order?</h2></div>
+          <p style="margin-top:16px;font-size:17px;line-height:1.7;color:var(--ink-muted)">
+            Harga tidak dipublikasikan karena pengadaan institusi menyesuaikan volume,
+            jalur anggaran, dan kebutuhan layanan. Isi formulir permintaan penawaran di
+            samping dengan jumlah unit dan nama institusi; kami balas dengan penawaran
+            resmi, ketersediaan, dan estimasi pengiriman.
+          </p>
+
+          <div class="specsec-h" style="margin-top:32px"><h2>Berapa lama pengiriman?</h2></div>
+          <p style="margin-top:16px;font-size:17px;line-height:1.7;color:var(--ink-muted)">
+            Untuk unit yang tersedia di gudang Jakarta, pengiriman biasanya 3–7 hari kerja
+            setelah pembayaran dikonfirmasi. Untuk unit yang harus didatangkan langsung dari
+            principal, waktu tunggu mengikuti jadwal produksi dan pengapalan mereka — angka
+            pastinya kami sebutkan di penawaran, bukan setelah Anda memesan.
+          </p>
+
+          <div class="specsec-h" style="margin-top:32px"><h2>Apakah termasuk pemasangan?</h2></div>
+          <p style="margin-top:16px;font-size:17px;line-height:1.7;color:var(--ink-muted)">
+            Ya, untuk instrumen. Pemasangan, uji fungsi awal, dan pelatihan operator dasar
+            termasuk dalam pengadaan. Suku cadang dan aksesori tidak memerlukan pemasangan
+            dan dikirim langsung ke alamat institusi.
+          </p>
+        </div>
+      </div>
+
+      <!-- Aside: RFQ rail + provenance -->
+      <aside class="prod-aside">
+        <form class="rfq">
+          <h3>Minta penawaran</h3>
+          <p>Balasan dalam 1 hari kerja. Tanpa komitmen.</p>
+
+          <div class="field">
+            <label class="label" for="r-name">Nama</label>
+            <input id="r-name" type="text" placeholder="Nama lengkap">
+          </div>
+          <div class="field">
+            <label class="label" for="r-org">Institusi</label>
+            <input id="r-org" type="text" placeholder="Rumah sakit / klinik / lab">
+          </div>
+          <div class="field">
+            <label class="label" for="r-mail">Email</label>
+            <input id="r-mail" type="email" placeholder="nama@institusi.co.id">
+          </div>
+          <div class="field">
+            <label class="label" for="r-qty">Jumlah unit</label>
+            <input id="r-qty" type="text" placeholder="1">
+          </div>
+          <div class="field">
+            <label class="label" for="r-msg">Catatan</label>
+            <textarea id="r-msg" rows="3" placeholder="Kebutuhan atau pertanyaan teknis"></textarea>
+          </div>
+
+          <button class="btn" type="submit">Kirim permintaan →</button>
+
+          <div class="rfq-meta">
+            Ref produk MMG-PRO-000043<br>
+            Dilampirkan otomatis
+          </div>
+        </form>
+
+        <div class="prov">
+          <div class="prov-h">Asal &amp; kepatuhan</div>
+          <div class="prov-row">
+            <span class="k">Principal</span>
+            <span class="v">Tecan Trading AG</span>
+          </div>
+          <div class="prov-row">
+            <span class="k">Asal</span>
+            <span class="v">Switzerland</span>
+          </div>
+          <div class="prov-row">
+            <span class="k">Izin edar</span>
+            <span class="v" style="color:var(--ink-subtle)">Tersedia saat penawaran</span>
+          </div>
+          <div class="prov-row">
+            <span class="k">Dokumen</span>
+            <span class="v" style="color:var(--accent);text-decoration:underline">Unduh datasheet →</span>
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <div class="sec" style="padding-bottom:0">
+      <div class="sec-head">
+        <div class="sec-num">—</div>
+        <div><h2>Produk terkait</h2></div>
+      </div>
+      <div class="relgrid" style="margin-top:24px">
+        <a href="#">
+          <div class="im"><img src="../images/products/tecan-infinite-200-pro.jpg" alt=""></div>
+          <div class="nm">Tecan Infinite 200 Pro</div>
+          <div class="mt">Instrumen · Tecan</div>
+        </a>
+        <a href="#">
+          <div class="im"><img src="../images/products/tecan-infinite-f50.jpg" alt=""></div>
+          <div class="nm">Tecan Infinite F50</div>
+          <div class="mt">Instrumen · Tecan</div>
+        </a>
+        <a href="#">
+          <div class="im"><img src="../images/products/tecan-hydroflex-gp.jpg" alt=""></div>
+          <div class="nm">Tecan HydroFlex GP</div>
+          <div class="mt">Instrumen · Tecan</div>
+        </a>
+        <a href="#">
+          <div class="im"><img src="../images/products/tecan-cell-chip.jpg" alt=""></div>
+          <div class="nm">Tecan Cell Chip</div>
+          <div class="mt">Bahan Habis Pakai · Tecan</div>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════════
+     SCREEN 4 — PRINCIPAL
+     ══════════════════════════════════════════════════════════ -->
+<div class="screen screen-principal">
+  <div class="wrap">
+
+    <nav class="crumbs" style="padding:20px 0">
+      <a href="#">Beranda</a><span>/</span><a href="#">Principal</a><span>/</span><span class="cur">Tecan</span>
+    </nav>
+
+    <div class="pr-top">
+      <div>
+        <span class="pr-sub">Principal resmi · Swiss</span>
+        <h1 class="pr-name">Tecan</h1>
+        <p class="pr-lede">
+          Manufaktur instrumen laboratorium asal Swiss. Kami mendistribusikan lini
+          microplate reader dan washer mereka untuk laboratorium klinik dan riset
+          di Indonesia, termasuk dukungan teknis dan suku cadang.
+        </p>
+      </div>
+      <aside class="pr-side">
+        <div class="pr-mark"><img src="../images/principals/tecan.png" alt="Tecan"></div>
+        <div class="row"><span class="k">Asal</span><span class="v">Swiss</span></div>
+        <div class="row"><span class="k">Produk kami</span><span class="v">5 entri</span></div>
+        <div class="row"><span class="k">Kategori</span><span class="v">Instrumen · Consumable</span></div>
+        <div class="row"><span class="k">Dukungan</span><span class="v">Teknis &amp; suku cadang</span></div>
+      </aside>
+    </div>
+
+    <section class="pr-sec">
+      <div class="pr-sec-h">
+        <h2>Produk Tecan yang kami distribusikan</h2>
+        <span class="label">5 entri</span>
+      </div>
+      <div class="pr-grid">
+        <article class="pr-card">
+          <div class="pr-card-img"><img src="../images/products/tecan-spark.jpg" alt="Tecan SPARK"></div>
+          <div class="pr-card-body">
+            <div class="pr-card-ref">MMG-PRO-000043</div>
+            <h3 class="pr-card-name">Tecan SPARK</h3>
+            <p class="pr-card-spec">Multimode microplate reader. Aplikasi biokimia, HTS, dan analisis sel hidup.</p>
+            <div class="pr-card-foot"><span class="cat">Instrumen</span><span class="go">Lihat →</span></div>
+          </div>
+        </article>
+        <article class="pr-card">
+          <div class="pr-card-img"><img src="../images/products/tecan-infinite-200-pro.jpg" alt="Tecan Infinite 200 Pro"></div>
+          <div class="pr-card-body">
+            <div class="pr-card-ref">MMG-PRO-000042</div>
+            <h3 class="pr-card-name">Tecan Infinite 200 Pro</h3>
+            <p class="pr-card-spec">Multimode reader dengan monokromator dan filter. Format plate 6–384 well.</p>
+            <div class="pr-card-foot"><span class="cat">Instrumen</span><span class="go">Lihat →</span></div>
+          </div>
+        </article>
+        <article class="pr-card">
+          <div class="pr-card-img"><img src="../images/products/tecan-infinite-f50.jpg" alt="Tecan Infinite F50"></div>
+          <div class="pr-card-body">
+            <div class="pr-card-ref">MMG-PRO-000044</div>
+            <h3 class="pr-card-name">Tecan Infinite F50</h3>
+            <p class="pr-card-spec">Absorbance microplate reader. Filter 405, 450, 492, 620 nm. Aplikasi utama ELISA.</p>
+            <div class="pr-card-foot"><span class="cat">Instrumen</span><span class="go">Lihat →</span></div>
+          </div>
+        </article>
+        <article class="pr-card">
+          <div class="pr-card-img"><img src="../images/products/tecan-hydroflex-gp.jpg" alt="Tecan HydroFlex GP"></div>
+          <div class="pr-card-body">
+            <div class="pr-card-ref">MMG-PRO-000470</div>
+            <h3 class="pr-card-name">Tecan HydroFlex GP</h3>
+            <p class="pr-card-spec">Microplate washer modular untuk pencucian plate ELISA, format 96 well.</p>
+            <div class="pr-card-foot"><span class="cat">Instrumen</span><span class="go">Lihat →</span></div>
+          </div>
+        </article>
+        <article class="pr-card">
+          <div class="pr-card-img"><img src="../images/products/tecan-cell-chip.jpg" alt="Tecan Cell Chip"></div>
+          <div class="pr-card-body">
+            <div class="pr-card-ref">MMG-PRO-000471</div>
+            <h3 class="pr-card-name">Tecan Cell Chip</h3>
+            <p class="pr-card-spec">Bahan habis pakai, 50 pcs per box, 100 test. Kompatibel dengan Tecan Spark.</p>
+            <div class="pr-card-foot"><span class="cat">Bahan Habis Pakai</span><span class="go">Lihat →</span></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="pr-sec">
+      <div class="pr-cta">
+        <div>
+          <h3>Butuh penawaran untuk produk Tecan?</h3>
+          <p>Sebutkan nomor REF atau nama produk, jumlah unit, dan nama institusi. Kami balas dengan penawaran resmi, ketersediaan, dan estimasi pengiriman.</p>
+        </div>
+        <a class="btn" href="#">Minta penawaran <span class="arrow">→</span></a>
+      </div>
+    </section>
+
+    <section class="pr-sec">
+      <div class="pr-sec-h">
+        <h2>Principal lain</h2>
+        <span class="label">26 total</span>
+      </div>
+      <div class="pr-list">
+        <a href="#" class="on"><span>Tecan</span><span class="n">05</span></a>
+        <a href="#"><span>Arctiko</span><span class="n">05</span></a>
+        <a href="#"><span>Sysmex</span><span class="n">—</span></a>
+        <a href="#"><span>Abbott</span><span class="n">—</span></a>
+        <a href="#"><span>Mindray</span><span class="n">—</span></a>
+        <a href="#"><span>Biomerieux</span><span class="n">—</span></a>
+        <a href="#"><span>Micronic</span><span class="n">—</span></a>
+        <a href="#"><span>Infitek</span><span class="n">—</span></a>
+        <a href="#"><span>Oxford</span><span class="n">—</span></a>
+        <a href="#"><span>Mandelab</span><span class="n">—</span></a>
+        <a href="#"><span>Diapro</span><span class="n">—</span></a>
+        <a href="#"><span>Lumira</span><span class="n">—</span></a>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<footer class="ftr">
+  <div class="ftr-in">
+    <div class="ftr-grid">
+      <div>
+        <img src="../images/MMG-logo.png" alt="MMG">
+        <address class="addr">
+          Menara Salemba, 7th Floor<br>
+          Jl. Salemba Raya No. 5-5A<br>
+          Paseban, Senen, Jakarta Pusat 10440
+        </address>
+      </div>
+      <div>
+        <h4>Navigasi</h4>
+        <ul>
+          <li><a href="#">Produk</a></li>
+          <li><a href="#">Principal</a></li>
+          <li><a href="#">Tentang Kami</a></li>
+          <li><a href="#">Kontak</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Kontak</h4>
+        <ul>
+          <li><a href="#" class="mono">(021) 39842961</a></li>
+          <li><a href="#">Formulir penawaran</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Untuk agen AI</h4>
+        <ul>
+          <li><a href="#" class="mono">/llms.txt</a></li>
+          <li><a href="#" class="mono">/katalog.md</a></li>
+          <li><a href="#" class="mono">/sitemap.xml</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="ftr-bot">
+      <span>© 2026 — PT Medquest Mitra Global</span>
+      <span>Distributor alat kesehatan untuk fasilitas kesehatan di Indonesia</span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
