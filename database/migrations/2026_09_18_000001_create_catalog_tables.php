@@ -103,14 +103,26 @@ return new class extends Migration
         });
 
         // Exactly one cover image per product, enforced by the database.
-        // MySQL/MariaDB have no partial unique indexes, so a stored generated
+        // MySQL/MariaDB have no partial unique indexes, so a generated
         // column collapses the cover row to its product_id and leaves gallery
         // rows NULL. Multiple NULLs are permitted in a unique index, so any
         // number of gallery images can coexist with one cover.
+        //
+        // The column must be VIRTUAL, not STORED. `product_id` is the base
+        // column of this generated column and carries an ON DELETE CASCADE
+        // foreign key, and MySQL forbids CASCADE, SET NULL, or SET DEFAULT as
+        // the ON DELETE/ON UPDATE action for a foreign key on the base column
+        // of a STORED generated column. The STORED spelling therefore fails
+        // with `ERROR 1215: Cannot add foreign key constraint` against the
+        // production MySQL 8.0.46 server. MariaDB accepts it, which is why the
+        // bug only surfaced on the deploy target and not in local tests.
+        // A unique index on a virtual generated column is still a real,
+        // materialised secondary index, so the constraint is enforced on every
+        // write. Verified on MySQL 8.0.46 and MariaDB 13.0.2.
         Schema::table('product_images', function (Blueprint $table) {
             $table->unsignedBigInteger('cover_key')
                 ->nullable()
-                ->storedAs('IF(is_cover, product_id, NULL)');
+                ->virtualAs('IF(is_cover, product_id, NULL)');
         });
 
         Schema::table('product_images', function (Blueprint $table) {

@@ -30,7 +30,7 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <!-- MySQL, not SQLite: the schema depends on features SQLite cannot
-             provide — stored generated columns (product_images.cover_key,
+             provide — generated columns (product_images.cover_key,
              products.name_id_text) and FULLTEXT indexes. Testing on SQLite
              would pass while production failed. -->
         <env name="DB_CONNECTION" value="mysql"/>

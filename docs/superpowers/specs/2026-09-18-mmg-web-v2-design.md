@@ -254,12 +254,16 @@ until the company supplies data, and rendering is conditional everywhere — no 
 schema nodes are emitted.
 
 **One cover image per product, enforced at the database level.** MySQL/MariaDB cannot
-express a partial unique index, so a stored generated column is used:
+express a partial unique index, so a generated column is used:
 
 ```sql
-cover_key BIGINT AS (IF(is_cover, product_id, NULL)) STORED,
+cover_key BIGINT AS (IF(is_cover, product_id, NULL)) VIRTUAL,
 UNIQUE KEY uniq_cover_per_product (cover_key)
 ```
+
+It must be `VIRTUAL`, not `STORED`: MySQL rejects `ON DELETE CASCADE` on a foreign key
+whose base column feeds a stored generated column (`ERROR 1215`). A unique index on a
+virtual generated column is still materialised, so the constraint holds.
 
 Multiple `NULL`s are permitted, so any number of gallery images coexist with exactly one
 cover per product. The application layer (Filament) additionally unsets other covers in
